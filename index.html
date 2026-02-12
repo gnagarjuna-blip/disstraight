@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIET - Straight Up Neighbor Master</title>
+    <style>
+        :root { --bg: #f0f2f5; --dark: #121212; --accent: #3498db; --win: #27ae60; --loss: #e74c3c; --txt: #2c3e50; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 950px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        
+        .config-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; background: #ecf0f1; padding: 15px; border-radius: 10px; }
+        .config-group { display: flex; flex-direction: column; }
+        .config-group label { font-size: 12px; font-weight: bold; margin-bottom: 5px; color: var(--txt); }
+        .config-group input { padding: 8px; border: 1px solid #bdc3c7; border-radius: 5px; font-size: 16px; font-weight: bold; }
+
+        .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+        .stat-card { background: var(--dark); color: white; padding: 12px; border-radius: 10px; text-align: center; border-bottom: 4px solid var(--accent); }
+        .stat-val { font-size: 18px; font-weight: bold; display: block; margin-top: 5px; }
+        .profit { color: var(--win); }
+        .drawdown { color: var(--loss); }
+
+        .wheel-strip { display: flex; overflow-x: auto; gap: 4px; padding: 10px; background: var(--dark); border-radius: 8px; margin-bottom: 15px; }
+        .slot { min-width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 12px; font-weight: bold; color: white; border: 2px solid transparent; }
+        .r { background: #e74c3c; } .b { background: #2c3e50; } .g { background: #27ae60; }
+        .last-hit { border: 2px solid #f1c40f; box-shadow: 0 0 8px #f1c40f; }
+        .is-bet { border: 2px solid #fff; transform: scale(1.1); box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+
+        .num-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 6px; margin-bottom: 20px; }
+        .n-btn { padding: 15px 0; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        
+        .pred-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .card { padding: 15px; border-radius: 12px; border: 2px solid #ddd; background: #fff; text-align: center; }
+        .active-win { border-color: var(--win); background: #f0fff4; }
+        .num-badge { display: inline-block; background: var(--txt); color: white; width: 30px; height: 30px; line-height: 30px; border-radius: 50%; font-weight: bold; margin: 2px; font-size: 12px; }
+        .hit-badge { background: #f1c40f !important; color: black !important; }
+        .distance-label { font-size: 14px; color: var(--accent); font-weight: bold; margin-bottom: 10px; display: block; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 style="text-align: center; margin-top: 0;">🎰 Straight Up Neighbor Predictor</h2>
+
+    <div class="config-bar">
+        <div class="config-group">
+            <label>Bankroll</label>
+            <input type="number" id="start-bank" value="1000" onchange="initSession()">
+        </div>
+        <div class="config-group">
+            <label>Base Unit (Per Num)</label>
+            <input type="number" id="base-unit" value="1" onchange="initSession()">
+        </div>
+        <div class="config-group">
+            <label>Target %</label>
+            <input type="number" id="target-perc" value="20" onchange="initSession()">
+        </div>
+    </div>
+
+    <div class="stats-bar">
+        <div class="stat-card">Bankroll<span id="stat-curr-bank" class="stat-val">1000</span></div>
+        <div class="stat-card">Session P/L<span id="stat-profit" class="stat-val">0</span></div>
+        <div class="stat-card">Unit Level<span id="stat-stake" class="stat-val">1</span></div>
+        <div class="stat-card">Loss Streak<span id="stat-loss-streak" class="stat-val">0</span></div>
+    </div>
+
+    <div class="wheel-strip" id="wheelStrip"></div>
+
+    <div class="num-grid" id="btns">
+        <button class="n-btn g" style="grid-row: span 3;" onclick="press(0)">0</button>
+    </div>
+
+    <div class="pred-grid" id="output"></div>
+    
+    <button onclick="initSession()" style="width:100%; padding:12px; margin-top:20px; background:#7f8c8d; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">MANUAL RESET</button>
+</div>
+
+<script>
+    const wheel = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+    const reds = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+    
+    let spins = [];
+    let currentBets = [];
+    let currentBankroll = 0;
+    let startBankroll = 0;
+    let baseUnit = 0;
+    let multiplier = 1;
+    let lossCount = 0;
+
+    function initSession() {
+        startBankroll = parseFloat(document.getElementById('start-bank').value);
+        currentBankroll = startBankroll;
+        baseUnit = parseFloat(document.getElementById('base-unit').value);
+        multiplier = 1;
+        lossCount = 0;
+        spins = [];
+        currentBets = [];
+        updateUI();
+    }
+
+    // Initialize Buttons
+    const bg = document.getElementById('btns');
+    for(let i=1; i<=36; i++) {
+        const b = document.createElement('button');
+        b.className = `n-btn ${reds.includes(i) ? 'r' : 'b'}`;
+        b.innerText = i;
+        b.onclick = () => press(i);
+        bg.appendChild(b);
+    }
+
+    function getNeighbors(num, count) {
+        let idx = wheel.indexOf(num);
+        let neighbors = [];
+        for (let i = -count; i <= count; i++) {
+            let neighborIdx = (idx + i + 37) % 37;
+            neighbors.push(wheel[neighborIdx]);
+        }
+        return neighbors;
+    }
+
+    function press(val) {
+        const stakePerNum = baseUnit * multiplier;
+
+        if (currentBets.length > 0) {
+            currentBankroll -= (currentBets.length * stakePerNum);
+
+            if (currentBets.includes(val)) {
+                // WIN
+                currentBankroll += (stakePerNum * 36);
+                multiplier = Math.max(1, multiplier - 1);
+                lossCount = 0;
+            } else {
+                // LOSS
+                lossCount++;
+                if (lossCount % 2 === 0) {
+                    multiplier++;
+                }
+            }
+        }
+
+        spins.push(val);
+        
+        // Target Check
+        const targetPercent = parseFloat(document.getElementById('target-perc').value);
+        if ((currentBankroll - startBankroll) >= (startBankroll * (targetPercent / 100))) {
+            alert("Goal Reached!");
+            initSession();
+            return;
+        }
+
+        updateUI();
+    }
+
+    function updateUI() {
+        document.getElementById('stat-curr-bank').innerText = currentBankroll.toFixed(2);
+        const profit = currentBankroll - startBankroll;
+        document.getElementById('stat-profit').innerText = profit.toFixed(2);
+        document.getElementById('stat-profit').className = 'stat-val ' + (profit >= 0 ? 'profit' : 'drawdown');
+        document.getElementById('stat-stake').innerText = multiplier;
+        document.getElementById('stat-loss-streak').innerText = lossCount;
+
+        // Visual Wheel Update
+        const strip = document.getElementById('wheelStrip');
+        strip.innerHTML = '';
+        wheel.forEach(n => {
+            const s = document.createElement('div');
+            const isLast = n === spins[spins.length-1];
+            const isBet = currentBets.includes(n);
+            s.className = `slot ${n===0?'g':(reds.includes(n)?'r':'b')} ${isLast?'last-hit':''} ${isBet?'is-bet':''}`;
+            s.innerText = n;
+            strip.appendChild(s);
+        });
+
+        const out = document.getElementById('output');
+        out.innerHTML = '';
+        if (spins.length < 2) {
+            out.innerHTML = '<div style="grid-column: span 2; text-align:center; padding:20px; color:#7f8c8d;">Enter at least 2 numbers to see distance & neighbors...</div>';
+            return;
+        }
+
+        const lastVal = spins[spins.length-1];
+        const prevVal = spins[spins.length-2];
+        const lastIdx = wheel.indexOf(lastVal);
+        const prevIdx = wheel.indexOf(prevVal);
+
+        // Distance logic
+        const jumpCW = (lastIdx - prevIdx + 37) % 37;
+        const jumpACW = (prevIdx - lastIdx + 37) % 37;
+
+        // Neighbor Logic (3 left, 3 right + center = 7 numbers)
+        const pivotCW = wheel[(lastIdx + jumpCW) % 37];
+        const neighborsCW = getNeighbors(pivotCW, 3);
+
+        const pivotACW = wheel[(lastIdx - jumpACW + 37) % 37];
+        const neighborsACW = getNeighbors(pivotACW, 3);
+
+        currentBets = [...new Set([...neighborsCW, ...neighborsACW])];
+
+        const results = [
+            { title: "Clockwise Prediction", dist: jumpCW, nums: neighborsCW },
+            { title: "Anti-Clockwise Prediction", dist: jumpACW, nums: neighborsACW }
+        ];
+
+        results.forEach(res => {
+            const card = document.createElement('div');
+            card.className = `card`;
+            const hit = spins.length > 2 && res.nums.includes(spins[spins.length-1]);
+            if(hit) card.classList.add('active-win');
+
+            card.innerHTML = `
+                <strong>${res.title}</strong>
+                <span class="distance-label">Jump Distance: ${res.dist}</span>
+                <div>
+                    ${res.nums.map(n => `<span class="num-badge ${spins[spins.length-1] === n ? 'hit-badge' : ''}">${n}</span>`).join('')}
+                </div>
+            `;
+            out.appendChild(card);
+        });
+    }
+
+    initSession();
+</script>
+</body>
+</html>

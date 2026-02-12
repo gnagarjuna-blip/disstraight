@@ -3,84 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIET - Advanced Staking & Trigger</title>
+    <title>BIET - Distance Memory Tracker</title>
     <style>
-        :root { --bg: #f4f7f6; --dark: #1e272e; --accent: #00d2d3; --win: #1dd1a1; --loss: #ff6b6b; --gold: #f1c40f; }
+        :root { --bg: #f0f2f5; --dark: #1e272e; --accent: #00d2d3; --win: #1dd1a1; --loss: #ff6b6b; --gold: #f1c40f; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 950px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .container { width: 100%; max-width: 1000px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
-        /* Config Bar - Now 2 rows for more control */
-        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 15px; background: #dfe6e9; padding: 15px; border-radius: 10px; }
+        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px; background: #dfe6e9; padding: 12px; border-radius: 10px; }
         .config-group { display: flex; flex-direction: column; }
-        .config-group label { font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; color: #2d3436; }
-        .config-group input, .config-group select { padding: 8px; border-radius: 5px; border: 1px solid #b2bec3; font-weight: bold; }
+        .config-group label { font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; }
+        .config-group input, .config-group select { padding: 6px; border-radius: 4px; border: 1px solid #b2bec3; font-weight: bold; }
 
-        #trigger-banner { width: 100%; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; font-weight: bold; font-size: 18px; display: none; }
-        .trigger-active { display: block !important; background: var(--win); color: white; border: 2px solid #fff; box-shadow: 0 0 15px rgba(29, 209, 161, 0.5); }
+        #trigger-banner { width: 100%; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 15px; font-weight: bold; display: none; border: 2px solid transparent; }
+        .pattern-found { display: block !important; background: #fff3cd; color: #856404; border-color: #ffeeba; }
+        .consistency-high { display: block !important; background: var(--win); color: white; border-color: #fff; animation: glow 1s infinite alternate; }
+        @keyframes glow { from { box-shadow: 0 0 5px #fff; } to { box-shadow: 0 0 15px var(--win); } }
 
-        .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
-        .stat-card { background: var(--dark); color: white; padding: 12px; border-radius: 10px; text-align: center; border-bottom: 3px solid var(--accent); }
-        .stat-val { font-size: 18px; font-weight: bold; display: block; color: var(--accent); }
+        .stats-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 15px; }
+        .stat-card { background: var(--dark); color: white; padding: 10px; border-radius: 8px; text-align: center; }
+        .stat-val { font-size: 16px; font-weight: bold; display: block; color: var(--accent); }
 
-        .wheel-strip { display: flex; overflow-x: auto; gap: 4px; padding: 10px; background: #2d3436; border-radius: 8px; margin-bottom: 15px; scroll-behavior: smooth; }
-        .slot { min-width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 12px; font-weight: bold; color: white; }
+        .wheel-strip { display: flex; overflow-x: auto; gap: 4px; padding: 10px; background: #2d3436; border-radius: 8px; margin-bottom: 15px; }
+        .slot { min-width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 11px; font-weight: bold; color: white; }
         .r { background: #e84118; } .b { background: #2f3640; } .g { background: #44bd32; }
-        .last-hit { border: 3px solid var(--gold); box-shadow: 0 0 10px var(--gold); }
+        .last-hit { outline: 3px solid var(--gold); outline-offset: 2px; }
 
-        .num-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 5px; margin-bottom: 20px; }
-        .n-btn { padding: 15px 0; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; }
+        .num-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 4px; margin-bottom: 15px; }
+        .n-btn { padding: 12px 0; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; }
         
-        .pred-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .card { padding: 15px; border-radius: 12px; border: 2px solid #ddd; background: #fff; text-align: center; }
-        .num-badge { display: inline-block; background: var(--dark); color: white; width: 30px; height: 30px; line-height: 30px; border-radius: 50%; margin: 2px; font-size: 11px; }
-        .is-hit { background: var(--gold) !important; color: black !important; font-weight: bold; }
+        .main-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; }
+        .card { padding: 15px; border-radius: 12px; border: 1px solid #ddd; background: #fff; margin-bottom: 10px; }
+        .dist-tag { display: inline-block; padding: 2px 8px; background: #eee; border-radius: 10px; font-size: 11px; margin: 2px; }
+        .hot-dist { background: var(--gold); color: black; font-weight: bold; }
+        .num-badge { display: inline-block; background: var(--dark); color: white; width: 28px; height: 28px; line-height: 28px; border-radius: 50%; margin: 2px; font-size: 11px; text-align: center; }
+        .is-hit { background: var(--gold) !important; color: black !important; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="trigger-banner">🎯 CONCISE DISTANCE DETECTED: GOOD TO PROCEED</div>
+    <div id="trigger-banner">RESTARTING PATTERN: SAME DISTANCE DETECTED</div>
 
     <div class="config-grid">
         <div class="config-group"><label>Bankroll</label><input type="number" id="start-bank" value="1000"></div>
         <div class="config-group"><label>Base Unit</label><input type="number" id="base-unit" value="1"></div>
         <div class="config-group">
             <label>Neighbors</label>
-            <select id="neighbor-count"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option></select>
+            <select id="neighbor-count"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="5">5</option><option value="7">7</option></select>
         </div>
         <div class="config-group">
-            <label>Incr. after X losses</label>
+            <label>Loss Step</label>
             <select id="loss-trigger"></select>
         </div>
         <div class="config-group">
-            <label>Decr. after Win</label>
+            <label>Win Decr.</label>
             <select id="win-recovery"></select>
         </div>
     </div>
 
     <div class="stats-bar">
-        <div class="stat-card">Profit<span id="stat-profit" class="stat-val">0</span></div>
-        <div class="stat-card">Unit Level<span id="stat-mult" class="stat-val">1</span></div>
-        <div class="stat-card">Loss Streak<span id="stat-losses" class="stat-val">0</span></div>
-        <div class="stat-card">Variance<span id="stat-cons" class="stat-val">-</span></div>
+        <div class="stat-card">P/L<span id="stat-profit" class="stat-val">0</span></div>
+        <div class="stat-card">Unit<span id="stat-mult" class="stat-val">1</span></div>
+        <div class="stat-card">Distance<span id="stat-dist" class="stat-val">-</span></div>
+        <div class="stat-card">Consistency<span id="stat-cons" class="stat-val">0%</span></div>
+        <div class="stat-card">Streak<span id="stat-losses" class="stat-val">0</span></div>
     </div>
 
     <div class="wheel-strip" id="wheelStrip"></div>
     <div class="num-grid" id="btns"><button class="n-btn g" style="grid-row: span 3;" onclick="press(0)">0</button></div>
-    <div class="pred-grid" id="output"></div>
-    <button onclick="initSession()" style="width:100%; padding:12px; margin-top:20px; background:#636e72; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">RESET SESSION</button>
+
+    <div class="main-layout">
+        <div id="output"></div>
+        <div class="card">
+            <strong style="font-size: 13px;">Distance Memory (Frequency)</strong>
+            <hr>
+            <div id="dist-memory-list"></div>
+        </div>
+    </div>
+
+    <button onclick="initSession()" style="width:100%; padding:10px; margin-top:10px; background:#636e72; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">RESET SESSION</button>
 </div>
 
 <script>
     const wheel = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
     const reds = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
     
-    let spins = [], jumpHistory = [], currentBets = [];
+    let spins = [], distanceStats = {}, currentBets = [];
     let bankroll = 1000, startBank = 1000, mult = 1, currentLossStreak = 0;
 
-    // Populate Dropdowns
     const lossSel = document.getElementById('loss-trigger');
-    for(let i=1; i<=36; i++) lossSel.add(new Option(i, i));
+    for(let i=1; i<=36; i++) lossSel.add(new Option(i + " Losses", i));
     lossSel.value = 2;
 
     const winSel = document.getElementById('win-recovery');
@@ -89,7 +101,7 @@
     function initSession() {
         startBank = parseFloat(document.getElementById('start-bank').value);
         bankroll = startBank;
-        mult = 1; currentLossStreak = 0; spins = []; jumpHistory = []; currentBets = [];
+        mult = 1; currentLossStreak = 0; spins = []; distanceStats = {}; currentBets = [];
         updateUI();
     }
 
@@ -109,16 +121,12 @@
         if (currentBets.length > 0) {
             bankroll -= (currentBets.length * unit * mult);
             if (currentBets.includes(val)) {
-                // WIN
                 bankroll += (unit * mult * 36);
                 mult = Math.max(1, mult - winDecr);
                 currentLossStreak = 0;
             } else {
-                // LOSS
                 currentLossStreak++;
-                if (currentLossStreak % lossThreshold === 0) {
-                    mult++;
-                }
+                if (currentLossStreak % lossThreshold === 0) mult++;
             }
         }
         spins.push(val);
@@ -126,8 +134,7 @@
     }
 
     function updateUI() {
-        const profit = bankroll - startBank;
-        document.getElementById('stat-profit').innerText = profit.toFixed(1);
+        document.getElementById('stat-profit').innerText = (bankroll - startBank).toFixed(1);
         document.getElementById('stat-mult').innerText = mult;
         document.getElementById('stat-losses').innerText = currentLossStreak;
 
@@ -141,43 +148,55 @@
 
         if (spins.length < 2) return;
 
-        // Jump Analysis
         const lastIdx = wheel.indexOf(spins[spins.length-1]);
         const prevIdx = wheel.indexOf(spins[spins.length-2]);
-        const jump = (lastIdx - prevIdx + 37) % 37;
-        jumpHistory.push(jump);
-        if(jumpHistory.length > 4) jumpHistory.shift();
+        
+        // Logical Distance
+        const dist = (lastIdx - prevIdx + 37) % 37;
+        document.getElementById('stat-dist').innerText = dist;
 
-        // Variance Logic for Trigger
-        let variance = 99;
-        if (jumpHistory.length >= 3) {
-            let avg = jumpHistory.reduce((a,b) => a+b) / jumpHistory.length;
-            variance = jumpHistory.reduce((a,b) => a + Math.abs(b - avg), 0) / jumpHistory.length;
-            document.getElementById('stat-cons').innerText = variance.toFixed(1);
+        // Memory Update
+        distanceStats[dist] = (distanceStats[dist] || 0) + 1;
+        updateMemoryDisplay();
+
+        // Pattern Matching
+        const banner = document.getElementById('trigger-banner');
+        let isRestart = distanceStats[dist] > 1;
+        let consistency = (Object.values(distanceStats).reduce((a,b)=>a+b, 0) / 37) * 100;
+        document.getElementById('stat-cons').innerText = Math.min(100, consistency.toFixed(0)) + "%";
+
+        if (isRestart) {
+            banner.className = 'pattern-found';
+            banner.innerText = `RESTARTING PATTERN: DISTANCE ${dist} REPEATED`;
+            banner.style.display = 'block';
+        } else {
+            banner.style.display = 'none';
         }
 
-        const banner = document.getElementById('trigger-banner');
-        banner.className = (variance <= 2.5) ? 'trigger-active' : '';
-
-        // Neighbors Prediction
+        // Neighbors Calculation
         const nRange = parseInt(document.getElementById('neighbor-count').value);
-        const pivotCW = wheel[(lastIdx + jump) % 37];
-        const predCW = getNeighbors(pivotCW, nRange);
-        
-        const jumpACW = (prevIdx - lastIdx + 37) % 37;
-        const pivotACW = wheel[(lastIdx - jumpACW + 37) % 37];
-        const predACW = getNeighbors(pivotACW, nRange);
-
-        currentBets = [...new Set([...predCW, ...predACW])];
+        const pivot = wheel[(lastIdx + dist) % 37];
+        const predNums = getNeighbors(pivot, nRange);
+        currentBets = predNums;
 
         const out = document.getElementById('output');
-        out.innerHTML = '';
-        [{t: "Clockwise Prediction", d: jump, nums: predCW}, {t: "Anti-Clockwise", d: jumpACW, nums: predACW}].forEach(res => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.innerHTML = `<strong>${res.t}</strong><div style="font-size:11px; margin:5px 0;">Distance: ${res.d}</div>` + 
-                res.nums.map(n => `<span class="num-badge ${spins[spins.length-1] === n ? 'is-hit' : ''}">${n}</span>`).join('');
-            out.appendChild(card);
+        out.innerHTML = `
+            <div class="card" style="border-left: 5px solid var(--win);">
+                <strong>Current Prediction</strong><br>
+                <small>Based on Distance: ${dist}</small><br><br>
+                ${predNums.map(n => `<span class="num-badge ${spins[spins.length-1] === n ? 'is-hit' : ''}">${n}</span>`).join('')}
+            </div>
+        `;
+    }
+
+    function updateMemoryDisplay() {
+        const mem = document.getElementById('dist-memory-list');
+        mem.innerHTML = '';
+        Object.entries(distanceStats).sort((a,b) => b[1] - a[1]).forEach(([d, count]) => {
+            const span = document.createElement('span');
+            span.className = `dist-tag ${count > 1 ? 'hot-dist' : ''}`;
+            span.innerText = `Dist ${d}: ${count}x`;
+            mem.appendChild(span);
         });
     }
 

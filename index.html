@@ -3,19 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIET - Distance Memory Tracker Pro</title>
+    <title>BIET - Cumulative Tracker</title>
     <style>
-        :root { --bg: #f0f2f5; --dark: #1e272e; --accent: #00d2d3; --win: #1dd1a1; --loss: #ff6b6b; --gold: #f1c40f; }
+        :root { --bg: #f0f2f5; --dark: #1e272e; --accent: #00d2d3; --win: #1dd1a1; --loss: #ff6b6b; --gold: #f1c40f; --ready: #0984e3; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         .container { width: 100%; max-width: 1000px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
-        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px; background: #dfe6e9; padding: 12px; border-radius: 10px; }
+        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 15px; background: #dfe6e9; padding: 12px; border-radius: 10px; }
         .config-group { display: flex; flex-direction: column; }
         .config-group label { font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; }
         .config-group input, .config-group select { padding: 6px; border-radius: 4px; border: 1px solid #b2bec3; font-weight: bold; }
-
-        #trigger-banner { width: 100%; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 15px; font-weight: bold; display: none; border: 2px solid transparent; }
-        .pattern-found { display: block !important; background: #fff3cd; color: #856404; border-color: #ffeeba; }
 
         .stats-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 15px; }
         .stat-card { background: var(--dark); color: white; padding: 10px; border-radius: 8px; text-align: center; }
@@ -29,52 +26,47 @@
         .num-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 4px; margin-bottom: 15px; }
         .n-btn { padding: 12px 0; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; }
         
-        .main-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 15px; }
+        .main-layout { display: grid; grid-template-columns: 1.6fr 1fr; gap: 15px; }
         .card { padding: 15px; border-radius: 12px; border: 1px solid #ddd; background: #fff; margin-bottom: 10px; }
-        .history-row { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0; font-size: 12px; }
-        .win-tag { color: var(--win); font-weight: bold; }
-        .loss-tag { color: var(--loss); font-weight: bold; }
+        .history-row { border-bottom: 1px solid #eee; padding: 8px 0; font-size: 12px; }
         
         .dist-tag { display: inline-block; padding: 2px 8px; background: #eee; border-radius: 10px; font-size: 11px; margin: 2px; }
-        .hot-dist { background: var(--gold); color: black; font-weight: bold; }
-        .num-badge { display: inline-block; background: var(--dark); color: white; width: 24px; height: 24px; line-height: 24px; border-radius: 50%; margin: 1px; font-size: 10px; text-align: center; }
-        .is-hit { background: var(--gold) !important; color: black !important; }
+        .hot-dist { background: var(--ready); color: white; }
+        .num-badge { display: inline-block; background: var(--dark); color: white; width: 22px; height: 22px; line-height: 22px; border-radius: 50%; margin: 1px; font-size: 9px; text-align: center; }
+        .is-hit { background: var(--win) !important; box-shadow: 0 0 5px var(--win); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="trigger-banner">RESTARTING PATTERN</div>
-
     <div class="config-grid">
         <div class="config-group"><label>Bankroll</label><input type="number" id="start-bank" value="1000"></div>
         <div class="config-group"><label>Base Unit</label><input type="number" id="base-unit" value="1"></div>
         <div class="config-group">
             <label>Neighbors</label>
             <select id="neighbor-count">
-                <option value="0">0 (Straight Up)</option>
+                <option value="0">0 (Straight)</option>
                 <option value="1">1</option>
                 <option value="2">2</option>
                 <option value="3" selected>3</option>
-                <option value="5">5</option>
             </select>
         </div>
         <div class="config-group">
-            <label>Loss Step</label>
-            <select id="loss-trigger"></select>
-        </div>
-        <div class="config-group">
-            <label>Win Decr.</label>
-            <select id="win-recovery"></select>
+            <label>Max Accumulation</label>
+            <select id="max-accum">
+                <option value="2">Last 2 Sets</option>
+                <option value="3" selected>Last 3 Sets</option>
+                <option value="5">Last 5 Sets</option>
+            </select>
         </div>
     </div>
 
     <div class="stats-bar">
-        <div class="stat-card">P/L<span id="stat-profit" class="stat-val">0</span></div>
-        <div class="stat-card">Unit<span id="stat-mult" class="stat-val">1</span></div>
-        <div class="stat-card">Dist<span id="stat-dist" class="stat-val">-</span></div>
-        <div class="stat-card">Hits<span id="stat-hits" class="stat-val">0</span></div>
-        <div class="stat-card">Streak<span id="stat-losses" class="stat-val">0</span></div>
+        <div class="stat-card">Profit<span id="stat-profit" class="stat-val">0</span></div>
+        <div class="stat-card">Active Bets<span id="stat-betcount" class="stat-val">0</span></div>
+        <div class="stat-card">Last Dist<span id="stat-dist" class="stat-val">-</span></div>
+        <div class="stat-card">Mult<span id="stat-mult" class="stat-val">1</span></div>
+        <div class="stat-card">Loss Streak<span id="stat-losses" class="stat-val">0</span></div>
     </div>
 
     <div class="wheel-strip" id="wheelStrip"></div>
@@ -84,40 +76,31 @@
         <div>
             <div id="output"></div>
             <div class="card">
-                <strong>Prediction History</strong>
+                <strong>History (Showing Cumulative Bets)</strong>
                 <hr>
                 <div id="bet-history"></div>
             </div>
         </div>
-        
         <div class="card">
-            <strong>Distance Memory</strong>
+            <strong>Distance Frequency</strong>
             <hr>
             <div id="dist-memory-list"></div>
         </div>
     </div>
-
-    <button onclick="initSession()" style="width:100%; padding:10px; margin-top:10px; background:#636e72; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">RESET SESSION</button>
+    <button onclick="initSession()" style="width:100%; padding:10px; background:#636e72; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">RESET SESSION</button>
 </div>
 
 <script>
     const wheel = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
     const reds = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
     
-    let spins = [], distanceStats = {}, currentBets = [], predictionLog = [];
-    let bankroll = 1000, startBank = 1000, mult = 1, currentLossStreak = 0, totalHits = 0;
-
-    const lossSel = document.getElementById('loss-trigger');
-    for(let i=1; i<=10; i++) lossSel.add(new Option(i + " Losses", i));
-    lossSel.value = 2;
-
-    const winSel = document.getElementById('win-recovery');
-    for(let i=1; i<=5; i++) winSel.add(new Option(i + " Unit", i));
+    let spins = [], distanceStats = {}, currentBets = [], predictionLog = [], betStack = [];
+    let bankroll = 1000, startBank = 1000, mult = 1, lossStreak = 0;
 
     function initSession() {
         startBank = parseFloat(document.getElementById('start-bank').value);
-        bankroll = startBank; mult = 1; currentLossStreak = 0; spins = []; 
-        distanceStats = {}; currentBets = []; predictionLog = []; totalHits = 0;
+        bankroll = startBank; mult = 1; lossStreak = 0; spins = []; 
+        distanceStats = {}; currentBets = []; predictionLog = []; betStack = [];
         updateUI();
     }
 
@@ -131,29 +114,21 @@
 
     function press(val) {
         let unit = parseFloat(document.getElementById('base-unit').value);
-        let lossThreshold = parseInt(document.getElementById('loss-trigger').value);
-        let winDecr = parseInt(document.getElementById('win-recovery').value);
 
         if (currentBets.length > 0) {
             bankroll -= (currentBets.length * unit * mult);
             let isWin = currentBets.includes(val);
             
-            // Log previous bet result
-            predictionLog.unshift({
-                result: val,
-                bets: [...currentBets],
-                win: isWin,
-                unit: mult
-            });
+            predictionLog.unshift({ result: val, bets: [...currentBets], win: isWin });
 
             if (isWin) {
                 bankroll += (unit * mult * 36);
-                mult = Math.max(1, mult - winDecr);
-                currentLossStreak = 0;
-                totalHits++;
+                mult = 1;
+                lossStreak = 0;
+                betStack = []; // Clear stack on win
             } else {
-                currentLossStreak++;
-                if (currentLossStreak % lossThreshold === 0) mult++;
+                lossStreak++;
+                if (lossStreak % 2 === 0) mult++;
             }
         }
         spins.push(val);
@@ -163,13 +138,11 @@
     function updateUI() {
         document.getElementById('stat-profit').innerText = (bankroll - startBank).toFixed(1);
         document.getElementById('stat-mult').innerText = mult;
-        document.getElementById('stat-losses').innerText = currentLossStreak;
-        document.getElementById('stat-hits').innerText = totalHits;
+        document.getElementById('stat-losses').innerText = lossStreak;
 
         const strip = document.getElementById('wheelStrip');
         strip.innerHTML = '';
-        const recentSpins = spins.slice(-15);
-        recentSpins.forEach(n => {
+        spins.slice(-12).forEach(n => {
             const s = document.createElement('div');
             s.className = `slot ${n===0?'g':(reds.includes(n)?'r':'b')} ${n===spins[spins.length-1]?'last-hit':''}`;
             s.innerText = n; strip.appendChild(s);
@@ -181,48 +154,50 @@
         const prevIdx = wheel.indexOf(spins[spins.length-2]);
         const dist = (lastIdx - prevIdx + 37) % 37;
         document.getElementById('stat-dist').innerText = dist;
-
         distanceStats[dist] = (distanceStats[dist] || 0) + 1;
-        updateMemoryDisplay();
 
-        const banner = document.getElementById('trigger-banner');
-        if (distanceStats[dist] > 1) {
-            banner.className = 'pattern-found';
-            banner.innerText = `DISTANCE ${dist} REPEATED`;
-            banner.style.display = 'block';
-        } else { banner.style.display = 'none'; }
-
-        // Predict Next
+        // Logic for Cumulative Betting
         const nRange = parseInt(document.getElementById('neighbor-count').value);
         const pivot = wheel[(lastIdx + dist) % 37];
-        currentBets = getNeighbors(pivot, nRange);
+        const newSet = getNeighbors(pivot, nRange);
+        
+        // Add new set to stack and limit stack size
+        betStack.unshift(newSet);
+        const maxS = parseInt(document.getElementById('max-accum').value);
+        if(betStack.length > maxS) betStack.pop();
 
-        const out = document.getElementById('output');
-        out.innerHTML = `
-            <div class="card" style="border-left: 5px solid var(--accent);">
-                <strong>Next Predicted Bet</strong><br>
-                <small>Targeting: ${pivot} (Dist ${dist})</small><br><br>
-                ${currentBets.map(n => `<span class="num-badge">${n}</span>`).join('')}
+        // Flatten stack into unique numbers for currentBets
+        currentBets = [...new Set(betStack.flat())];
+        document.getElementById('stat-betcount').innerText = currentBets.length;
+
+        document.getElementById('output').innerHTML = `
+            <div class="card" style="border-left: 5px solid var(--ready); background: #f8fbff;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong>Next Cumulative Bet</strong>
+                    <span style="font-size:10px; color:var(--ready)">Includes last ${betStack.length} predictions</span>
+                </div>
+                <hr>
+                ${currentBets.map(n => `<span class="num-badge" style="background:var(--ready)">${n}</span>`).join('')}
             </div>
         `;
 
-        // Update History List
+        updateLists();
+    }
+
+    function updateLists() {
         const histDiv = document.getElementById('bet-history');
         histDiv.innerHTML = predictionLog.slice(0, 5).map(log => `
             <div class="history-row">
-                <span>Result: <b>${log.result}</b></span>
-                <span>${log.win ? '<span class="win-tag">WIN</span>' : '<span class="loss-tag">LOSS</span>'}</span>
-                <div>${log.bets.map(n => `<span class="num-badge" style="width:18px;height:18px;line-height:18px;font-size:9px; ${n===log.result?'background:var(--win)':''}">${n}</span>`).join('')}</div>
+                <div style="margin-bottom:5px;">Spin <b>${log.result}</b> | ${log.win?'<b style="color:var(--win)">WIN</b>':'<b style="color:var(--loss)">LOSS</b>'}</div>
+                <div>${log.bets.map(n => `<span class="num-badge ${n===log.result?'is-hit':''}">${n}</span>`).join('')}</div>
             </div>
         `).join('');
-    }
 
-    function updateMemoryDisplay() {
         const mem = document.getElementById('dist-memory-list');
         mem.innerHTML = '';
         Object.entries(distanceStats).sort((a,b) => b[1] - a[1]).forEach(([d, count]) => {
             const span = document.createElement('span');
-            span.className = `dist-tag ${count > 1 ? 'hot-dist' : ''}`;
+            span.className = `dist-tag ${count >= 2 ? 'hot-dist' : ''}`;
             span.innerText = `D${d}: ${count}x`;
             mem.appendChild(span);
         });

@@ -3,91 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIET - Smart Trigger Predictor</title>
+    <title>BIET - Advanced Staking & Trigger</title>
     <style>
         :root { --bg: #f4f7f6; --dark: #1e272e; --accent: #00d2d3; --win: #1dd1a1; --loss: #ff6b6b; --gold: #f1c40f; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         .container { width: 100%; max-width: 950px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
-        /* Config Section */
-        .config-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; background: #dfe6e9; padding: 15px; border-radius: 10px; }
+        /* Config Bar - Now 2 rows for more control */
+        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 15px; background: #dfe6e9; padding: 15px; border-radius: 10px; }
         .config-group { display: flex; flex-direction: column; }
-        .config-group label { font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
+        .config-group label { font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; color: #2d3436; }
         .config-group input, .config-group select { padding: 8px; border-radius: 5px; border: 1px solid #b2bec3; font-weight: bold; }
 
-        /* Trigger Banner */
-        #trigger-banner { width: 100%; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; font-weight: bold; font-size: 18px; display: none; transition: 0.3s; }
-        .trigger-active { display: block !important; background: var(--win); color: white; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        #trigger-banner { width: 100%; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; font-weight: bold; font-size: 18px; display: none; }
+        .trigger-active { display: block !important; background: var(--win); color: white; border: 2px solid #fff; box-shadow: 0 0 15px rgba(29, 209, 161, 0.5); }
 
         .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
-        .stat-card { background: var(--dark); color: white; padding: 12px; border-radius: 10px; text-align: center; }
+        .stat-card { background: var(--dark); color: white; padding: 12px; border-radius: 10px; text-align: center; border-bottom: 3px solid var(--accent); }
         .stat-val { font-size: 18px; font-weight: bold; display: block; color: var(--accent); }
 
-        .wheel-strip { display: flex; overflow-x: auto; gap: 4px; padding: 10px; background: #2d3436; border-radius: 8px; margin-bottom: 15px; }
-        .slot { min-width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 12px; font-weight: bold; color: white; }
+        .wheel-strip { display: flex; overflow-x: auto; gap: 4px; padding: 10px; background: #2d3436; border-radius: 8px; margin-bottom: 15px; scroll-behavior: smooth; }
+        .slot { min-width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 12px; font-weight: bold; color: white; }
         .r { background: #e84118; } .b { background: #2f3640; } .g { background: #44bd32; }
-        .last-hit { border: 3px solid var(--gold); }
+        .last-hit { border: 3px solid var(--gold); box-shadow: 0 0 10px var(--gold); }
 
         .num-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 5px; margin-bottom: 20px; }
         .n-btn { padding: 15px 0; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; }
         
         .pred-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .card { padding: 15px; border-radius: 12px; border: 2px solid #ddd; position: relative; }
-        .consistency-meter { font-size: 12px; color: #636e72; margin-top: 5px; }
-        .num-badge { display: inline-block; background: var(--dark); color: white; width: 28px; height: 28px; line-height: 28px; border-radius: 50%; margin: 2px; font-size: 11px; text-align: center; }
-        .is-hit { background: var(--gold) !important; color: black !important; }
+        .card { padding: 15px; border-radius: 12px; border: 2px solid #ddd; background: #fff; text-align: center; }
+        .num-badge { display: inline-block; background: var(--dark); color: white; width: 30px; height: 30px; line-height: 30px; border-radius: 50%; margin: 2px; font-size: 11px; }
+        .is-hit { background: var(--gold) !important; color: black !important; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="trigger-banner">🔥 WHEEL IS CONSISTENT: GOOD TO PROCEED</div>
+    <div id="trigger-banner">🎯 CONCISE DISTANCE DETECTED: GOOD TO PROCEED</div>
 
-    <div class="config-bar">
+    <div class="config-grid">
         <div class="config-group"><label>Bankroll</label><input type="number" id="start-bank" value="1000"></div>
         <div class="config-group"><label>Base Unit</label><input type="number" id="base-unit" value="1"></div>
         <div class="config-group">
-            <label>Neighbors (1-7)</label>
-            <select id="neighbor-count" onchange="updateUI()">
-                <option value="1">1 (3 Total)</option>
-                <option value="2">2 (5 Total)</option>
-                <option value="3" selected>3 (7 Total)</option>
-                <option value="4">4 (9 Total)</option>
-                <option value="5">5 (11 Total)</option>
-                <option value="6">6 (13 Total)</option>
-                <option value="7">7 (15 Total)</option>
-            </select>
+            <label>Neighbors</label>
+            <select id="neighbor-count"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option></select>
         </div>
-        <div class="config-group"><label>Target %</label><input type="number" id="target-perc" value="20"></div>
+        <div class="config-group">
+            <label>Incr. after X losses</label>
+            <select id="loss-trigger"></select>
+        </div>
+        <div class="config-group">
+            <label>Decr. after Win</label>
+            <select id="win-recovery"></select>
+        </div>
     </div>
 
     <div class="stats-bar">
-        <div class="stat-card">P/L<span id="stat-profit" class="stat-val">0</span></div>
-        <div class="stat-card">Multiplier<span id="stat-mult" class="stat-val">1x</span></div>
-        <div class="stat-card">Last Jump<span id="stat-jump" class="stat-val">-</span></div>
-        <div class="stat-card">Consistency<span id="stat-cons" class="stat-val">Wait...</span></div>
+        <div class="stat-card">Profit<span id="stat-profit" class="stat-val">0</span></div>
+        <div class="stat-card">Unit Level<span id="stat-mult" class="stat-val">1</span></div>
+        <div class="stat-card">Loss Streak<span id="stat-losses" class="stat-val">0</span></div>
+        <div class="stat-card">Variance<span id="stat-cons" class="stat-val">-</span></div>
     </div>
 
     <div class="wheel-strip" id="wheelStrip"></div>
     <div class="num-grid" id="btns"><button class="n-btn g" style="grid-row: span 3;" onclick="press(0)">0</button></div>
     <div class="pred-grid" id="output"></div>
-    <button onclick="initSession()" style="width:100%; padding:12px; margin-top:20px; background:#636e72; color:white; border:none; border-radius:8px; cursor:pointer;">RESET SESSION</button>
+    <button onclick="initSession()" style="width:100%; padding:12px; margin-top:20px; background:#636e72; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">RESET SESSION</button>
 </div>
 
 <script>
     const wheel = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
     const reds = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
     
-    let spins = [];
-    let jumpHistory = [];
-    let currentBets = [];
-    let bankroll = 1000, startBank = 1000, mult = 1, losses = 0;
+    let spins = [], jumpHistory = [], currentBets = [];
+    let bankroll = 1000, startBank = 1000, mult = 1, currentLossStreak = 0;
+
+    // Populate Dropdowns
+    const lossSel = document.getElementById('loss-trigger');
+    for(let i=1; i<=36; i++) lossSel.add(new Option(i, i));
+    lossSel.value = 2;
+
+    const winSel = document.getElementById('win-recovery');
+    for(let i=1; i<=5; i++) winSel.add(new Option(i + " Unit", i));
 
     function initSession() {
         startBank = parseFloat(document.getElementById('start-bank').value);
         bankroll = startBank;
-        mult = 1; losses = 0; spins = []; jumpHistory = []; currentBets = [];
+        mult = 1; currentLossStreak = 0; spins = []; jumpHistory = []; currentBets = [];
         updateUI();
     }
 
@@ -101,15 +103,22 @@
 
     function press(val) {
         let unit = parseFloat(document.getElementById('base-unit').value);
+        let lossThreshold = parseInt(document.getElementById('loss-trigger').value);
+        let winDecr = parseInt(document.getElementById('win-recovery').value);
+
         if (currentBets.length > 0) {
             bankroll -= (currentBets.length * unit * mult);
             if (currentBets.includes(val)) {
+                // WIN
                 bankroll += (unit * mult * 36);
-                mult = Math.max(1, mult - 1);
-                losses = 0;
+                mult = Math.max(1, mult - winDecr);
+                currentLossStreak = 0;
             } else {
-                losses++;
-                if (losses % 2 === 0) mult++;
+                // LOSS
+                currentLossStreak++;
+                if (currentLossStreak % lossThreshold === 0) {
+                    mult++;
+                }
             }
         }
         spins.push(val);
@@ -117,14 +126,11 @@
     }
 
     function updateUI() {
-        const out = document.getElementById('output');
-        const banner = document.getElementById('trigger-banner');
         const profit = bankroll - startBank;
-        
         document.getElementById('stat-profit').innerText = profit.toFixed(1);
-        document.getElementById('stat-mult').innerText = mult + "x";
+        document.getElementById('stat-mult').innerText = mult;
+        document.getElementById('stat-losses').innerText = currentLossStreak;
 
-        // Wheel UI
         const strip = document.getElementById('wheelStrip');
         strip.innerHTML = '';
         wheel.forEach(n => {
@@ -135,28 +141,25 @@
 
         if (spins.length < 2) return;
 
-        // Distance Calculation
+        // Jump Analysis
         const lastIdx = wheel.indexOf(spins[spins.length-1]);
         const prevIdx = wheel.indexOf(spins[spins.length-2]);
         const jump = (lastIdx - prevIdx + 37) % 37;
         jumpHistory.push(jump);
-        if(jumpHistory.length > 5) jumpHistory.shift();
+        if(jumpHistory.length > 4) jumpHistory.shift();
 
-        document.getElementById('stat-jump').innerText = jump;
-
-        // Consistency Logic (Variance check)
-        let isConsistent = false;
+        // Variance Logic for Trigger
+        let variance = 99;
         if (jumpHistory.length >= 3) {
-            const diffs = [];
-            for(let i=1; i<jumpHistory.length; i++) diffs.push(Math.abs(jumpHistory[i] - jumpHistory[i-1]));
-            const avgDiff = diffs.reduce((a,b)=>a+b,0) / diffs.length;
-            document.getElementById('stat-cons').innerText = avgDiff.toFixed(1);
-            if (avgDiff <= 3) isConsistent = true; // Trigger if jumps vary by 3 pockets or less
+            let avg = jumpHistory.reduce((a,b) => a+b) / jumpHistory.length;
+            variance = jumpHistory.reduce((a,b) => a + Math.abs(b - avg), 0) / jumpHistory.length;
+            document.getElementById('stat-cons').innerText = variance.toFixed(1);
         }
 
-        banner.className = isConsistent ? 'trigger-active' : '';
+        const banner = document.getElementById('trigger-banner');
+        banner.className = (variance <= 2.5) ? 'trigger-active' : '';
 
-        // Prediction with Dynamic Neighbors
+        // Neighbors Prediction
         const nRange = parseInt(document.getElementById('neighbor-count').value);
         const pivotCW = wheel[(lastIdx + jump) % 37];
         const predCW = getNeighbors(pivotCW, nRange);
@@ -167,12 +170,13 @@
 
         currentBets = [...new Set([...predCW, ...predACW])];
 
+        const out = document.getElementById('output');
         out.innerHTML = '';
-        [{t: "CW Prediction", d: jump, nums: predCW}, {t: "ACW Prediction", d: jumpACW, nums: predACW}].forEach(res => {
+        [{t: "Clockwise Prediction", d: jump, nums: predCW}, {t: "Anti-Clockwise", d: jumpACW, nums: predACW}].forEach(res => {
             const card = document.createElement('div');
             card.className = 'card';
-            card.innerHTML = `<strong>${res.t}</strong><div class="consistency-meter">Distance: ${res.d}</div><br>` + 
-                res.nums.map(n => `<span class="num-badge">${n}</span>`).join('');
+            card.innerHTML = `<strong>${res.t}</strong><div style="font-size:11px; margin:5px 0;">Distance: ${res.d}</div>` + 
+                res.nums.map(n => `<span class="num-badge ${spins[spins.length-1] === n ? 'is-hit' : ''}">${n}</span>`).join('');
             out.appendChild(card);
         });
     }

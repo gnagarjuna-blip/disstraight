@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIET - Custom Step Tracker</title>
+    <title>BIET - Fixed Distance Step Tracker</title>
     <style>
         :root { --bg: #f0f2f5; --dark: #1e272e; --accent: #00d2d3; --win: #1dd1a1; --loss: #ff6b6b; --gold: #f1c40f; --ready: #0984e3; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
@@ -42,6 +42,10 @@
         <div class="config-group"><label>Bankroll</label><input type="number" id="start-bank" value="1000"></div>
         <div class="config-group"><label>Base Unit</label><input type="number" id="base-unit" value="1"></div>
         <div class="config-group">
+            <label>Target Dist (0-36)</label>
+            <input type="number" id="target-dist" value="0" min="0" max="36">
+        </div>
+        <div class="config-group">
             <label>Neighbors</label>
             <select id="neighbor-count"></select>
         </div>
@@ -54,8 +58,8 @@
             <select id="win-step"></select>
         </div>
         <div class="config-group">
-            <label>Max Accum (1-36)</label>
-            <input type="number" id="max-accum" value="3" min="1" max="36">
+            <label>Max Accum</label>
+            <input type="number" id="max-accum" value="1" min="1" max="36">
         </div>
     </div>
 
@@ -63,7 +67,7 @@
         <div class="stat-card">Profit<span id="stat-profit" class="stat-val">0</span></div>
         <div class="stat-card">Unit<span id="stat-mult" class="stat-val">1</span></div>
         <div class="stat-card">Active Bets<span id="stat-betcount" class="stat-val">0</span></div>
-        <div class="stat-card">Dist<span id="stat-dist" class="stat-val">-</span></div>
+        <div class="stat-card">Fixed Dist<span id="stat-dist" class="stat-val">0</span></div>
         <div class="stat-card">Streak<span id="stat-losses" class="stat-val">0</span></div>
     </div>
 
@@ -80,7 +84,7 @@
             </div>
         </div>
         <div class="card">
-            <strong>Distance Tracker</strong>
+            <strong>Actual Distance Log</strong>
             <hr>
             <div id="dist-memory-list"></div>
         </div>
@@ -95,7 +99,7 @@
     let spins = [], distanceStats = {}, currentBets = [], predictionLog = [], betStack = [];
     let bankroll = 1000, startBank = 1000, mult = 1, currentLosses = 0, currentWins = 0;
 
-    // Populate Dynamic Dropdowns
+    // Dropdowns
     const nbSelect = document.getElementById('neighbor-count');
     for(let i=0; i<=7; i++) nbSelect.add(new Option(i + " Neighbors", i));
     nbSelect.value = 3;
@@ -162,29 +166,38 @@
             s.innerText = n; strip.appendChild(s);
         });
 
-        if (spins.length < 2) return;
+        if (spins.length < 1) return;
+
+        // FIXED DISTANCE LOGIC
+        const fixedDist = parseInt(document.getElementById('target-dist').value) || 0;
+        document.getElementById('stat-dist').innerText = fixedDist;
+
+        // Calculate actual distance for the history log only
+        if (spins.length >= 2) {
+            const lastIdx = wheel.indexOf(spins[spins.length-1]);
+            const prevIdx = wheel.indexOf(spins[spins.length-2]);
+            const actualDist = (lastIdx - prevIdx + 37) % 37;
+            distanceStats[actualDist] = (distanceStats[actualDist] || 0) + 1;
+        }
 
         const lastIdx = wheel.indexOf(spins[spins.length-1]);
-        const prevIdx = wheel.indexOf(spins[spins.length-2]);
-        const dist = (lastIdx - prevIdx + 37) % 37;
-        document.getElementById('stat-dist').innerText = dist;
-        distanceStats[dist] = (distanceStats[dist] || 0) + 1;
-
         const nRange = parseInt(nbSelect.value);
-        const pivot = wheel[(lastIdx + dist) % 37];
+        
+        // Use the FIXED DISTANCE to find the pivot
+        const pivot = wheel[(lastIdx + fixedDist) % 37];
         const newSet = getNeighbors(pivot, nRange);
         
         betStack.unshift(newSet);
         const maxS = parseInt(document.getElementById('max-accum').value);
-        if(betStack.length > maxS) betStack.pop();
+        while(betStack.length > maxS) betStack.pop();
 
         currentBets = [...new Set(betStack.flat())];
         document.getElementById('stat-betcount').innerText = currentBets.length;
 
         document.getElementById('output').innerHTML = `
             <div class="card" style="border-left: 5px solid var(--ready); background: #f0f7ff;">
-                <strong>Cumulative Bet (${betStack.length} Patterns)</strong>
-                <p style="font-size:11px; margin: 5px 0;">New Target: <b>${pivot}</b> (Dist ${dist})</p>
+                <strong>Next Prediction (Fixed Dist: ${fixedDist})</strong>
+                <p style="font-size:11px; margin: 5px 0;">Pivot Point: <b>${pivot}</b> (Spin ${spins[spins.length-1]} + ${fixedDist})</p>
                 <hr>
                 ${currentBets.map(n => `<span class="num-badge" style="background:var(--ready)">${n}</span>`).join('')}
             </div>
@@ -206,7 +219,7 @@
         mem.innerHTML = '';
         Object.entries(distanceStats).sort((a,b) => b[1] - a[1]).forEach(([d, count]) => {
             const span = document.createElement('span');
-            span.className = `dist-tag ${count >= 2 ? 'hot-dist' : ''}`;
+            span.className = `dist-tag`;
             span.style.background = count >= 2 ? 'var(--gold)' : '#eee';
             span.innerText = `D${d}: ${count}x`;
             mem.appendChild(span);

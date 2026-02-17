@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BIET - Group Distance Tracker Pro</title>
     <style>
-        :root { --bg: #f0f2f5; --dark: #1e272e; --accent: #00d2d3; --win: #1dd1a1; --loss: #ff6b6b; --gold: #f1c40f; --ready: #0984e3; --repeat: #fff200; }
+        :root { --bg: #f0f2f5; --dark: #1e272e; --accent: #00d2d3; --win: #1dd1a1; --loss: #ff6b6b; --gold: #f1c40f; --ready: #0984e3; --not-bet: #636e72; --repeat: #fff200; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         .container { width: 100%; max-width: 1100px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
@@ -27,10 +27,11 @@
         .n-btn { padding: 12px 0; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
         
         .main-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 15px; }
+        .prediction-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
         .card { padding: 15px; border-radius: 12px; border: 1px solid #ddd; background: #fff; margin-bottom: 10px; }
         .bet-label { display: inline-block; background: #e17055; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin: 2px; font-weight: bold; }
+        .not-bet-label { display: inline-block; background: var(--not-bet); color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin: 2px; opacity: 0.8; }
         
-        /* Distance Tracker Styles */
         .dist-flex { display: flex; gap: 10px; }
         .dist-list { flex: 1; max-height: 250px; overflow-y: auto; border-right: 1px solid #eee; }
         .freq-list { flex: 1; max-height: 250px; overflow-y: auto; }
@@ -46,10 +47,10 @@
         <div class="config-group"><label>Base Unit</label><input type="number" id="base-unit" value="1"></div>
         <div class="config-group">
             <label>Betting Mode</label>
-            <select id="bet-mode">
+            <select id="bet-mode" onchange="updateUI()">
                 <option value="straight">Straight</option>
                 <option value="street">Streets (3 Nos)</option>
-                <option value="dstreet">Double Streets (6 Nos)</option>
+                <option value="dstreet" selected>Double Streets (6 Nos)</option>
                 <option value="dozen">Dozens (12 Nos)</option>
             </select>
         </div>
@@ -131,8 +132,17 @@
         bg.appendChild(b);
     }
 
+    function getAllGroupsForMode(mode) {
+        let groups = [];
+        if(mode === 'street') for(let i=1; i<=12; i++) groups.push(`ST ${i}`);
+        if(mode === 'dstreet') for(let i=1; i<=6; i++) groups.push(`DS ${i}`);
+        if(mode === 'dozen') for(let i=1; i<=3; i++) groups.push(`DOZ ${i}`);
+        if(mode === 'straight') for(let i=0; i<=36; i++) groups.push(`S-${i}`);
+        return groups;
+    }
+
     function getGroupData(num, mode) {
-        if (num === 0) return { label: "Zero", nums: [0], payout: 35 };
+        if (num === 0 && mode !== 'straight') return { label: "Zero", nums: [0] };
         let n = parseInt(num);
         switch(mode) {
             case 'street': {
@@ -155,14 +165,11 @@
 
     function press(val) {
         let unit = parseFloat(document.getElementById('base-unit').value);
-        
         if (activeLabels.length > 0) {
             let uniqueGroups = new Set(activeLabels).size;
             bankroll -= (uniqueGroups * unit * mult);
-            
             let isWin = currentBets.includes(val);
             predictionLog.unshift({ result: val, bets: [...currentBets], win: isWin, unitApplied: mult });
-
             if (isWin) {
                 const mode = document.getElementById('bet-mode').value;
                 let payoutFactor = mode === 'dozen' ? 3 : mode === 'dstreet' ? 6 : mode === 'street' ? 12 : 36;
@@ -196,24 +203,20 @@
             const lastIdx = wheel.indexOf(spins[spins.length-1]);
             const prevIdx = wheel.indexOf(spins[spins.length-2]);
             const actualDist = (lastIdx - prevIdx + 37) % 37;
-            distanceHistory.push(actualDist);
-            
+            if(spins.length > distanceHistory.length + 1) distanceHistory.push(actualDist);
             document.getElementById('stat-dist').innerText = actualDist;
 
-            // Logic for Distance Lock
             const lockVal = document.getElementById('dist-lock').value;
             const useDist = lockVal === 'auto' ? actualDist : parseInt(lockVal);
-
             const pClock = wheel[(lastIdx + useDist) % 37];
             const pAnti = wheel[(lastIdx - useDist + 37) % 37];
-
             const mode = document.getElementById('bet-mode').value;
+            
             const g1 = getGroupData(pClock, mode);
             const g2 = getGroupData(pAnti, mode);
 
-            betStack.unshift([g1, g2]);
-            while(betStack.length > parseInt(document.getElementById('max-accum').value)) betStack.pop();
-
+            betStack = [[g1, g2]]; // Reset/Set current stack based on logic
+            
             let allNums = new Set();
             let allLabels = new Set();
             betStack.flat().forEach(g => {
@@ -224,22 +227,31 @@
             currentBets = Array.from(allNums);
             activeLabels = Array.from(allLabels);
 
+            // Calculate "Not Next Bet"
+            const allPossibleGroups = getAllGroupsForMode(mode);
+            const notNextBetLabels = allPossibleGroups.filter(label => !activeLabels.includes(label));
+
             document.getElementById('prediction-output').innerHTML = `
-                <div class="card" style="border-left: 5px solid var(--ready); background: #f0f7ff;">
-                    <div style="display:flex; justify-content:space-between;">
-                        <strong>Next Bet: ${mode.toUpperCase()} (Dist: ${useDist})</strong>
-                        <span style="font-size:12px">Chips: ${activeLabels.length}</span>
+                <div class="prediction-grid">
+                    <div class="card" style="border-left: 5px solid var(--ready); background: #f0f7ff;">
+                        <strong>Next Bet (${useDist})</strong>
+                        <div style="margin-top: 8px;">
+                            ${activeLabels.map(l => `<span class="bet-label">${l}</span>`).join('')}
+                        </div>
                     </div>
-                    <div style="margin: 8px 0;">
-                        ${activeLabels.map(l => `<span class="bet-label">${l}</span>`).join('')}
+                    <div class="card" style="border-left: 5px solid var(--not-bet); background: #f9f9f9;">
+                        <strong>Not Next Bet</strong>
+                        <div style="margin-top: 8px;">
+                            ${notNextBetLabels.map(l => `<span class="not-bet-label">${l}</span>`).join('')}
+                        </div>
                     </div>
                 </div>
             `;
             
-            // Distance Log
             const logDiv = document.getElementById('dist-log');
-            logDiv.innerHTML = `<div style="padding:2px 0; border-bottom:1px solid #eee;">${spins[spins.length-2]}→${spins[spins.length-1]} | <b>D: ${actualDist}</b></div>` + logDiv.innerHTML;
-            
+            if(spins.length > 1) {
+                logDiv.innerHTML = `<div style="padding:2px 0; border-bottom:1px solid #eee;">${spins[spins.length-2]}→${spins[spins.length-1]} | <b>D: ${actualDist}</b></div>` + logDiv.innerHTML;
+            }
             updateFrequencyUI();
         }
 
@@ -250,17 +262,12 @@
     function updateFrequencyUI() {
         const freqMap = {};
         distanceHistory.forEach(d => freqMap[d] = (freqMap[d] || 0) + 1);
-
-        // Sort by frequency (descending) then distance (ascending)
         const sortedFreq = Object.entries(freqMap).sort((a, b) => b[1] - a[1] || a[0] - b[0]);
-
         const freqDiv = document.getElementById('freq-rank');
         freqDiv.innerHTML = '<strong>Freq Rank</strong>';
-        
         sortedFreq.forEach(([dist, count]) => {
-            const isRepeat = count > 1;
             const item = document.createElement('div');
-            item.className = `freq-item ${isRepeat ? 'is-repeating' : ''}`;
+            item.className = `freq-item ${count > 1 ? 'is-repeating' : ''}`;
             item.innerHTML = `<span>Dist ${dist}</span> <span>${count}x</span>`;
             freqDiv.appendChild(item);
         });

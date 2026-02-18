@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIET Pro - Auto Tracker & Stake Highlight</title>
+    <title>BIET Pro - Manual & Auto Distance Tracker</title>
     <style>
         :root { 
             --bg: #f0f2f5; --dark: #1e272e; --accent: #00d2d3; 
@@ -13,23 +13,22 @@
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         .container { width: 100%; max-width: 1100px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
-        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 15px; background: #dfe6e9; padding: 12px; border-radius: 10px; }
+        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 15px; background: #dfe6e9; padding: 12px; border-radius: 10px; }
         .config-group { display: flex; flex-direction: column; }
         .config-group label { font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; color: #4b6584; }
         .config-group input, .config-group select { padding: 6px; border-radius: 4px; border: 1px solid #b2bec3; font-weight: bold; }
 
-        .stats-bar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 15px; }
+        .stats-bar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 15px; }
         .stat-card { background: var(--dark); color: white; padding: 10px; border-radius: 8px; text-align: center; border-bottom: 3px solid var(--accent); }
-        .stat-val { font-size: 15px; font-weight: bold; display: block; color: var(--accent); }
+        .stat-val { font-size: 14px; font-weight: bold; display: block; color: var(--accent); }
 
         .num-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 4px; margin-bottom: 15px; }
         .n-btn { padding: 12px 0; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; }
         .r { background: #e84118; } .b { background: #2f3640; } .g { background: #44bd32; }
 
-        .main-layout { display: grid; grid-template-columns: 1fr 350px; gap: 15px; }
+        .main-layout { display: grid; grid-template-columns: 1fr 300px; gap: 15px; }
         .card { padding: 15px; border-radius: 12px; border: 1px solid #ddd; background: #fff; margin-bottom: 10px; }
         
-        /* Prediction & Stake Highlighting */
         .bet-container { display: flex; gap: 10px; margin-top: 10px; }
         .bet-box { flex: 1; text-align: center; padding: 15px; border-radius: 8px; border: 2px solid #f1f2f6; background: #fdfdfd; }
         .bet-box.active { border-color: var(--win); background: #f0fff4; box-shadow: 0 4px 10px rgba(29, 209, 161, 0.2); }
@@ -41,12 +40,11 @@
         .tag-wait { background: #dfe6e9; color: #636e72; }
         .tag-bet { background: var(--win); color: white; }
 
-        .sidebar-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 250px; }
-        .log-col { overflow-y: auto; font-size: 11px; border-right: 1px solid #eee; padding-right: 5px; }
-        .freq-col { overflow-y: auto; font-size: 11px; }
+        .tracker-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 220px; }
+        .scroll-list { overflow-y: auto; font-size: 11px; border: 1px solid #f1f2f6; border-radius: 5px; padding: 5px; }
 
         textarea { width: 100%; height: 60px; padding: 10px; border-radius: 5px; margin-top: 10px; box-sizing: border-box; }
-        .btn { padding: 12px; border: none; border-radius: 5px; cursor: pointer; color: white; font-weight: bold; flex: 1; }
+        .btn { padding: 10px; border: none; border-radius: 5px; cursor: pointer; color: white; font-weight: bold; flex: 1; }
     </style>
 </head>
 <body>
@@ -63,16 +61,23 @@
                 <option value="dozen">Dozens (1L)</option>
             </select>
         </div>
-        <div class="config-group"><label>Loss Step (+)</label><input type="number" id="loss-step" value="2"></div>
-        <div class="config-group"><label>Win Step (-)</label><input type="number" id="win-step" value="1"></div>
+        <div class="config-group">
+            <label>Dist Lock</label>
+            <select id="dist-lock">
+                <option value="auto">Auto Dist</option>
+            </select>
+        </div>
+        <div class="config-group"><label>Loss Step</label><input type="number" id="loss-step" value="2"></div>
+        <div class="config-group"><label>Win Step</label><input type="number" id="win-step" value="1"></div>
     </div>
 
     <div class="stats-bar">
         <div class="stat-card">Balance<span id="stat-balance" class="stat-val">1000</span></div>
-        <div class="stat-card">Peak Bal<span id="stat-peak" class="stat-val" style="color:var(--gold)">1000</span></div>
+        <div class="stat-card">Peak<span id="stat-peak" class="stat-val" style="color:var(--gold)">1000</span></div>
         <div class="stat-card">Profit<span id="stat-profit" class="stat-val">0</span></div>
-        <div class="stat-card">Multiplier<span id="stat-mult" class="stat-val">1</span></div>
+        <div class="stat-card">Multi<span id="stat-mult" class="stat-val">1</span></div>
         <div class="stat-card">Virtual L<span id="stat-trigger" class="stat-val">0</span></div>
+        <div class="stat-card">Cur Dist<span id="stat-dist" class="stat-val">--</span></div>
         <div class="stat-card">Spins<span id="stat-spins" class="stat-val">0</span></div>
     </div>
 
@@ -91,22 +96,21 @@
         </div>
 
         <div class="card">
-            <strong>Distance Analysis</strong>
-            <hr>
-            <div class="sidebar-grid">
-                <div class="log-col" id="dist-log"><strong>Log</strong><br></div>
-                <div class="freq-col" id="freq-rank"><strong>Freq</strong><br></div>
+            <strong>Distance Tracker</strong><hr>
+            <div class="tracker-grid">
+                <div class="scroll-list" id="dist-log"><strong>Log</strong><br></div>
+                <div class="scroll-list" id="freq-rank"><strong>Freq</strong><br></div>
             </div>
         </div>
     </div>
 
     <div class="card" style="background:#f8f9fa">
-        <strong>Bulk Data Input</strong>
-        <textarea id="bulk-input" placeholder="Paste: 32, 15, 19..."></textarea>
+        <strong>Bulk Simulation</strong>
+        <textarea id="bulk-input" placeholder="32, 15, 19..."></textarea>
         <div style="display:flex; gap:10px; margin-top:10px;">
-            <button class="btn" style="background:var(--ready)" onclick="runBulk()">RUN SIMULATION</button>
-            <button class="btn" style="background:var(--not-bet)" onclick="undoLast()">UNDO LAST</button>
-            <button class="btn" style="background:#d63031" onclick="resetSession()">RESET ALL</button>
+            <button class="btn" style="background:var(--ready)" onclick="runBulk()">SIMULATE ALL</button>
+            <button class="btn" style="background:var(--not-bet)" onclick="undoLast()">UNDO</button>
+            <button class="btn" style="background:#d63031" onclick="resetSession()">RESET</button>
         </div>
     </div>
 </div>
@@ -120,7 +124,11 @@
     let currentLosses = 0, currentWins = 0, virtualLosses = 0;
     let historyState = [];
 
-    // Init Numbers
+    // Populate Distance Dropdown (1-36)
+    const dLock = document.getElementById('dist-lock');
+    for(let i=1; i<=36; i++) dLock.add(new Option(`Fixed: ${i}`, i));
+
+    // Init Number Buttons
     const bg = document.getElementById('btns');
     for(let i=1; i<=36; i++) {
         const b = document.createElement('button');
@@ -145,8 +153,8 @@
         bankroll = startBank; peakBalance = startBank; mult = 1; 
         currentLosses = 0; currentWins = 0; virtualLosses = 0;
         spins = []; distanceHistory = []; predictionLog = []; betStack = [];
-        updateUI();
         document.getElementById('dist-log').innerHTML = '<strong>Log</strong><br>';
+        updateUI();
     }
 
     function getGroupData(num, mode) {
@@ -221,34 +229,36 @@
         if (spins.length >= 2) {
             const last = spins[spins.length-1];
             const prev = spins[spins.length-2];
-            const d = (wheel.indexOf(last) - wheel.indexOf(prev) + 37) % 37;
+            const lastDist = (wheel.indexOf(last) - wheel.indexOf(prev) + 37) % 37;
+            
+            const lockVal = document.getElementById('dist-lock').value;
+            const useD = lockVal === 'auto' ? lastDist : parseInt(lockVal);
+            document.getElementById('stat-dist').innerText = useD;
+
             const mode = document.getElementById('bet-mode').value;
             const unit = parseFloat(document.getElementById('base-unit').value);
             const trigger = mode === 'street' ? 4 : mode === 'dstreet' ? 2 : 1;
             
-            const g1 = getGroupData(wheel[(wheel.indexOf(last) + d) % 37], mode);
-            const g2 = getGroupData(wheel[(wheel.indexOf(last) - d + 37) % 37], mode);
+            const g1 = getGroupData(wheel[(wheel.indexOf(last) + useD) % 37], mode);
+            const g2 = getGroupData(wheel[(wheel.indexOf(last) - useD + 37) % 37], mode);
             betStack = [g1, g2];
 
             let isBetting = virtualLosses >= trigger;
             document.getElementById('trigger-status').innerHTML = isBetting ? 
-                `<span class="status-tag tag-bet">BETTING ON</span>` : 
+                `<span class="status-tag tag-bet">BETTING ACTIVE</span>` : 
                 `<span class="status-tag tag-wait">VIRTUAL WAIT (${virtualLosses}/${trigger}L)</span>`;
 
             document.getElementById('bet-display').innerHTML = betStack.map(g => `
                 <div class="bet-box ${isBetting ? 'active' : ''}">
                     <span class="label">${g.label}</span>
-                    <span class="stake">${unit * mult} Unit</span>
+                    <span class="stake">${unit * mult} Units</span>
                 </div>
             `).join('');
 
-            // Update Log
-            let logDiv = document.getElementById('dist-log');
-            logDiv.innerHTML = `<strong>Log</strong><br>` + distanceHistory.slice(-20).reverse().map(dist => `<div>D: <b>${dist}</b></div>`).join('');
-            
-            // Update Frequency
+            // Log & Freq
+            document.getElementById('dist-log').innerHTML = `<strong>Log</strong><br>` + distanceHistory.slice(-20).reverse().map(d => `<div>Dist: <b>${d}</b></div>`).join('');
             let fMap = {};
-            distanceHistory.forEach(dist => fMap[dist] = (fMap[dist] || 0) + 1);
+            distanceHistory.forEach(d => fMap[d] = (fMap[d] || 0) + 1);
             let sorted = Object.entries(fMap).sort((a,b) => b[1]-a[1]);
             document.getElementById('freq-rank').innerHTML = `<strong>Freq</strong><br>` + sorted.slice(0, 10).map(x => `<div>D${x[0]}: ${x[1]}x</div>`).join('');
         }

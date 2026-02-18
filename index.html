@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIET Pro - Stake Highlighter & Peak Tracker</title>
+    <title>BIET Pro - Auto Tracker & Stake Highlight</title>
     <style>
         :root { 
             --bg: #f0f2f5; --dark: #1e272e; --accent: #00d2d3; 
@@ -11,45 +11,47 @@
             --ready: #0984e3; --not-bet: #636e72; --wait: #a29bfe;
         }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 1200px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .container { width: 100%; max-width: 1100px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
-        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 15px; background: #dfe6e9; padding: 12px; border-radius: 10px; }
+        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 15px; background: #dfe6e9; padding: 12px; border-radius: 10px; }
         .config-group { display: flex; flex-direction: column; }
         .config-group label { font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; color: #4b6584; }
         .config-group input, .config-group select { padding: 6px; border-radius: 4px; border: 1px solid #b2bec3; font-weight: bold; }
 
-        .stats-bar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 15px; }
-        .stat-card { background: var(--dark); color: white; padding: 10px; border-radius: 8px; text-align: center; border-bottom: 3px solid var(--accent); position: relative; }
+        .stats-bar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 15px; }
+        .stat-card { background: var(--dark); color: white; padding: 10px; border-radius: 8px; text-align: center; border-bottom: 3px solid var(--accent); }
         .stat-val { font-size: 15px; font-weight: bold; display: block; color: var(--accent); }
 
-        .main-layout { display: grid; grid-template-columns: 1.2fr 1.3fr; gap: 15px; }
-        .card { padding: 15px; border-radius: 12px; border: 1px solid #ddd; background: #fff; margin-bottom: 10px; }
-        
         .num-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 4px; margin-bottom: 15px; }
         .n-btn { padding: 12px 0; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; }
         .r { background: #e84118; } .b { background: #2f3640; } .g { background: #44bd32; }
 
+        .main-layout { display: grid; grid-template-columns: 1fr 350px; gap: 15px; }
+        .card { padding: 15px; border-radius: 12px; border: 1px solid #ddd; background: #fff; margin-bottom: 10px; }
+        
+        /* Prediction & Stake Highlighting */
         .bet-container { display: flex; gap: 10px; margin-top: 10px; }
-        .bet-box { flex: 1; text-align: center; padding: 10px; border-radius: 8px; border: 2px solid #eee; transition: all 0.3s; }
-        .bet-box.active { border-color: var(--win); background: #f0fff4; }
-        .bet-box .label { font-weight: bold; display: block; font-size: 18px; }
-        .bet-box .stake { color: var(--win); font-weight: 800; font-size: 14px; display: none; }
+        .bet-box { flex: 1; text-align: center; padding: 15px; border-radius: 8px; border: 2px solid #f1f2f6; background: #fdfdfd; }
+        .bet-box.active { border-color: var(--win); background: #f0fff4; box-shadow: 0 4px 10px rgba(29, 209, 161, 0.2); }
+        .bet-box .label { font-weight: 800; display: block; font-size: 20px; color: #2d3436; }
+        .bet-box .stake { color: var(--win); font-weight: 900; font-size: 16px; margin-top: 5px; display: none; }
         .bet-box.active .stake { display: block; }
 
-        .status-tag { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; margin-bottom: 10px; display: inline-block; }
-        .tag-wait { background: #eee; color: #666; }
+        .status-tag { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; display: inline-block; margin-bottom: 10px; }
+        .tag-wait { background: #dfe6e9; color: #636e72; }
         .tag-bet { background: var(--win); color: white; }
 
-        textarea { width: 100%; height: 60px; padding: 10px; border-radius: 5px; margin-top: 10px; }
-        .btn { padding: 10px; border: none; border-radius: 5px; cursor: pointer; color: white; font-weight: bold; }
-        #status-msg { width: 100%; padding: 10px; text-align: center; border-radius: 8px; margin-bottom: 10px; font-weight: bold; display: none; background: #ff7675; color: white; }
+        .sidebar-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 250px; }
+        .log-col { overflow-y: auto; font-size: 11px; border-right: 1px solid #eee; padding-right: 5px; }
+        .freq-col { overflow-y: auto; font-size: 11px; }
+
+        textarea { width: 100%; height: 60px; padding: 10px; border-radius: 5px; margin-top: 10px; box-sizing: border-box; }
+        .btn { padding: 12px; border: none; border-radius: 5px; cursor: pointer; color: white; font-weight: bold; flex: 1; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="status-msg">INSUFFICIENT BALANCE</div>
-
     <div class="config-grid">
         <div class="config-group"><label>Start Bank</label><input type="number" id="start-bank" value="1000"></div>
         <div class="config-group"><label>Base Unit</label><input type="number" id="base-unit" value="10"></div>
@@ -61,18 +63,16 @@
                 <option value="dozen">Dozens (1L)</option>
             </select>
         </div>
-        <div class="config-group"><label>Max Accum</label><input type="number" id="max-accum" value="1"></div>
-        <div class="config-group"><label>Loss Step</label><input type="number" id="loss-step" value="2"></div>
-        <div class="config-group"><label>Win Step</label><input type="number" id="win-step" value="1"></div>
+        <div class="config-group"><label>Loss Step (+)</label><input type="number" id="loss-step" value="2"></div>
+        <div class="config-group"><label>Win Step (-)</label><input type="number" id="win-step" value="1"></div>
     </div>
 
     <div class="stats-bar">
         <div class="stat-card">Balance<span id="stat-balance" class="stat-val">1000</span></div>
-        <div class="stat-card">Peak<span id="stat-peak" class="stat-val" style="color:var(--gold)">1000</span></div>
+        <div class="stat-card">Peak Bal<span id="stat-peak" class="stat-val" style="color:var(--gold)">1000</span></div>
         <div class="stat-card">Profit<span id="stat-profit" class="stat-val">0</span></div>
-        <div class="stat-card">Multi<span id="stat-mult" class="stat-val">1</span></div>
+        <div class="stat-card">Multiplier<span id="stat-mult" class="stat-val">1</span></div>
         <div class="stat-card">Virtual L<span id="stat-trigger" class="stat-val">0</span></div>
-        <div class="stat-card">Drawdown<span id="stat-draw" class="stat-val">0</span></div>
         <div class="stat-card">Spins<span id="stat-spins" class="stat-val">0</span></div>
     </div>
 
@@ -85,22 +85,28 @@
                 <div id="bet-display" class="bet-container"></div>
             </div>
             <div class="card">
-                <strong>Recent History</strong><hr>
+                <strong>Bet History</strong><hr>
                 <div id="bet-history" style="font-size: 11px;"></div>
             </div>
         </div>
+
         <div class="card">
-            <strong>Distance Log</strong>
-            <div id="dist-log" style="font-size: 11px; height: 200px; overflow-y: auto;"></div>
+            <strong>Distance Analysis</strong>
+            <hr>
+            <div class="sidebar-grid">
+                <div class="log-col" id="dist-log"><strong>Log</strong><br></div>
+                <div class="freq-col" id="freq-rank"><strong>Freq</strong><br></div>
+            </div>
         </div>
     </div>
 
-    <div class="bulk-area">
-        <textarea id="bulk-input" placeholder="Paste results..."></textarea>
+    <div class="card" style="background:#f8f9fa">
+        <strong>Bulk Data Input</strong>
+        <textarea id="bulk-input" placeholder="Paste: 32, 15, 19..."></textarea>
         <div style="display:flex; gap:10px; margin-top:10px;">
-            <button class="btn" style="background:var(--ready); flex:2" onclick="runBulk()">SIMULATE ALL</button>
-            <button class="btn" style="background:var(--not-bet); flex:1" onclick="undoLast()">UNDO</button>
-            <button class="btn" style="background:#d63031; flex:1" onclick="resetSession()">RESET</button>
+            <button class="btn" style="background:var(--ready)" onclick="runBulk()">RUN SIMULATION</button>
+            <button class="btn" style="background:var(--not-bet)" onclick="undoLast()">UNDO LAST</button>
+            <button class="btn" style="background:#d63031" onclick="resetSession()">RESET ALL</button>
         </div>
     </div>
 </div>
@@ -109,12 +115,12 @@
     const wheel = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
     const reds = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
     
-    let spins = [], predictionLog = [], betStack = [];
+    let spins = [], distanceHistory = [], predictionLog = [], betStack = [];
     let bankroll = 1000, startBank = 1000, mult = 1, peakBalance = 1000;
-    let currentLosses = 0, currentWins = 0, virtualLosses = 0, isStopped = false;
+    let currentLosses = 0, currentWins = 0, virtualLosses = 0;
     let historyState = [];
 
-    // Initialize UI
+    // Init Numbers
     const bg = document.getElementById('btns');
     for(let i=1; i<=36; i++) {
         const b = document.createElement('button');
@@ -124,7 +130,7 @@
     }
 
     function saveState() {
-        historyState.push(JSON.stringify({ spins, predictionLog, betStack, bankroll, mult, peakBalance, currentLosses, currentWins, virtualLosses, isStopped }));
+        historyState.push(JSON.stringify({ spins, distanceHistory, predictionLog, betStack, bankroll, mult, peakBalance, currentLosses, currentWins, virtualLosses }));
         if(historyState.length > 50) historyState.shift();
     }
 
@@ -135,11 +141,12 @@
     }
 
     function resetSession() {
-        startBank = parseFloat(document.getElementById('start-bank').value);
+        startBank = parseFloat(document.getElementById('start-bank').value) || 1000;
         bankroll = startBank; peakBalance = startBank; mult = 1; 
         currentLosses = 0; currentWins = 0; virtualLosses = 0;
-        spins = []; predictionLog = []; betStack = []; isStopped = false;
+        spins = []; distanceHistory = []; predictionLog = []; betStack = [];
         updateUI();
+        document.getElementById('dist-log').innerHTML = '<strong>Log</strong><br>';
     }
 
     function getGroupData(num, mode) {
@@ -160,28 +167,26 @@
     }
 
     function press(val) {
-        if(isStopped) return;
         saveState();
-
         let unit = parseFloat(document.getElementById('base-unit').value);
         let mode = document.getElementById('bet-mode').value;
         let trigger = mode === 'street' ? 4 : mode === 'dstreet' ? 2 : 1;
 
         if (betStack.length > 0) {
             let bettingNumbers = new Set();
-            betStack.flat().forEach(g => g.nums.forEach(n => bettingNumbers.add(n)));
+            betStack.forEach(g => g.nums.forEach(n => bettingNumbers.add(n)));
             let isWin = bettingNumbers.has(val);
             let isActualBet = virtualLosses >= trigger;
 
             if (isActualBet) {
-                let totalStake = betStack[0].length * unit * mult;
+                let totalStake = betStack.length * unit * mult;
                 bankroll -= totalStake;
                 if (isWin) {
                     let payout = mode === 'dozen' ? 3 : mode === 'dstreet' ? 6 : 12;
                     bankroll += (unit * mult * payout);
                     currentLosses = 0; currentWins++;
                     if (currentWins % parseInt(document.getElementById('win-step').value) === 0) mult = Math.max(1, mult - 1);
-                    virtualLosses = 0;
+                    virtualLosses = 0; 
                 } else {
                     currentWins = 0; currentLosses++;
                     if (currentLosses % parseInt(document.getElementById('loss-step').value) === 0) mult++;
@@ -193,8 +198,15 @@
             }
         }
 
-        if(bankroll > peakBalance) peakBalance = bankroll;
         spins.push(val);
+        if (spins.length >= 2) {
+            const last = spins[spins.length-1];
+            const prev = spins[spins.length-2];
+            const d = (wheel.indexOf(last) - wheel.indexOf(prev) + 37) % 37;
+            distanceHistory.push(d);
+        }
+
+        if(bankroll > peakBalance) peakBalance = bankroll;
         updateUI();
     }
 
@@ -205,7 +217,6 @@
         document.getElementById('stat-mult').innerText = mult;
         document.getElementById('stat-trigger').innerText = virtualLosses;
         document.getElementById('stat-spins').innerText = spins.length;
-        document.getElementById('stat-draw').innerText = (peakBalance - bankroll).toFixed(0);
 
         if (spins.length >= 2) {
             const last = spins[spins.length-1];
@@ -217,27 +228,34 @@
             
             const g1 = getGroupData(wheel[(wheel.indexOf(last) + d) % 37], mode);
             const g2 = getGroupData(wheel[(wheel.indexOf(last) - d + 37) % 37], mode);
-            betStack = [[g1, g2]];
+            betStack = [g1, g2];
 
             let isBetting = virtualLosses >= trigger;
             document.getElementById('trigger-status').innerHTML = isBetting ? 
-                `<span class="status-tag tag-bet">BETTING ACTIVE</span>` : 
-                `<span class="status-tag tag-wait">WAITING (${virtualLosses}/${trigger}L)</span>`;
+                `<span class="status-tag tag-bet">BETTING ON</span>` : 
+                `<span class="status-tag tag-wait">VIRTUAL WAIT (${virtualLosses}/${trigger}L)</span>`;
 
-            document.getElementById('bet-display').innerHTML = betStack[0].map(g => `
+            document.getElementById('bet-display').innerHTML = betStack.map(g => `
                 <div class="bet-box ${isBetting ? 'active' : ''}">
                     <span class="label">${g.label}</span>
-                    <span class="stake">$${unit * mult}</span>
+                    <span class="stake">${unit * mult} Unit</span>
                 </div>
             `).join('');
 
+            // Update Log
             let logDiv = document.getElementById('dist-log');
-            logDiv.innerHTML = `<div>${prev}→${last} | Dist: <b>${d}</b></div>` + logDiv.innerHTML;
+            logDiv.innerHTML = `<strong>Log</strong><br>` + distanceHistory.slice(-20).reverse().map(dist => `<div>D: <b>${dist}</b></div>`).join('');
+            
+            // Update Frequency
+            let fMap = {};
+            distanceHistory.forEach(dist => fMap[dist] = (fMap[dist] || 0) + 1);
+            let sorted = Object.entries(fMap).sort((a,b) => b[1]-a[1]);
+            document.getElementById('freq-rank').innerHTML = `<strong>Freq</strong><br>` + sorted.slice(0, 10).map(x => `<div>D${x[0]}: ${x[1]}x</div>`).join('');
         }
 
         document.getElementById('bet-history').innerHTML = predictionLog.slice(0, 5).map(l => 
-            `<div style="border-bottom:1px solid #eee; padding:2px">
-                Spin ${l.res}: ${l.win?'<b style="color:var(--win)">WIN</b>':'<b style="color:var(--loss)">LOSS</b>'} 
+            `<div style="border-bottom:1px solid #eee; padding:3px">
+                Spin ${l.res}: ${l.win?'<span style="color:var(--win)">HIT</span>':'<span style="color:var(--loss)">MISS</span>'} 
                 <small style="float:right">${l.type} ${l.cost>0?'(-'+l.cost+')':''}</small>
             </div>`).join('');
     }

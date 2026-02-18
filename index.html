@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIET Pro - Multi-Mode Distance Tracker</title>
+    <title>BIET Pro - Custom Progression Simulator</title>
     <style>
         :root { 
             --bg: #f0f2f5; --dark: #1e272e; --accent: #00d2d3; 
@@ -11,12 +11,12 @@
             --ready: #0984e3; --not-bet: #636e72; --stop: #d63031;
         }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 1200px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .container { width: 100%; max-width: 1250px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
-        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 15px; background: #dfe6e9; padding: 12px; border-radius: 10px; }
+        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 15px; background: #dfe6e9; padding: 12px; border-radius: 10px; }
         .config-group { display: flex; flex-direction: column; }
-        .config-group label { font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; color: #4b6584; }
-        .config-group input, .config-group select { padding: 6px; border-radius: 4px; border: 1px solid #b2bec3; font-weight: bold; }
+        .config-group label { font-size: 9px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; color: #4b6584; }
+        .config-group input, .config-group select { padding: 6px; border-radius: 4px; border: 1px solid #b2bec3; font-weight: bold; font-size: 12px; }
 
         .stats-bar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 15px; }
         .stat-card { background: var(--dark); color: white; padding: 10px; border-radius: 8px; text-align: center; border-bottom: 3px solid var(--accent); }
@@ -41,10 +41,8 @@
         .btn-undo { background: var(--not-bet); }
         .btn-reset { background: var(--stop); }
 
-        .bet-label { display: inline-block; background: #e17055; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin: 2px; font-weight: bold; }
-        .not-bet-label { display: inline-block; background: var(--not-bet); color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin: 2px; }
+        .bet-label { display: inline-block; background: #e17055; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin: 2px; font-weight: bold; }
         .missing-num { display: inline-block; width: 22px; margin: 2px; padding: 2px; background: #f1f2f6; text-align: center; border-radius: 3px; font-size: 10px; }
-        
         #status-msg { width: 100%; padding: 10px; text-align: center; border-radius: 8px; margin-bottom: 10px; font-weight: bold; display: none; }
         .danger { background: #ff7675; color: white; display: block !important; }
     </style>
@@ -68,14 +66,17 @@
         </div>
         <div class="config-group"><label>Dist Lock</label><select id="dist-lock"><option value="auto">Auto</option></select></div>
         <div class="config-group"><label>Pivots</label><input type="number" id="max-accum" value="1" min="1"></div>
-        <div class="config-group"><label>Loss Step (+)</label><select id="loss-step"></select></div>
-        <div class="config-group"><label>Win Step (-)</label><select id="win-step"></select></div>
+        
+        <div class="config-group"><label>Loss Step</label><select id="loss-trigger"></select></div>
+        <div class="config-group"><label>Loss Add (+)</label><select id="loss-amount"></select></div>
+        <div class="config-group"><label>Win Step</label><select id="win-trigger"></select></div>
+        <div class="config-group"><label>Win Sub (-)</label><select id="win-amount"></select></div>
     </div>
 
     <div class="stats-bar">
         <div class="stat-card">Balance<span id="stat-balance" class="stat-val">1000</span></div>
         <div class="stat-card">Profit<span id="stat-profit" class="stat-val">0</span></div>
-        <div class="stat-card">Next Multi<span id="stat-mult" class="stat-val">1</span></div>
+        <div class="stat-card">Multi<span id="stat-mult" class="stat-val">1</span></div>
         <div class="stat-card">Max Bet<span id="stat-maxbet" class="stat-val">0</span></div>
         <div class="stat-card">D-Down<span id="stat-draw" class="stat-val">0</span></div>
         <div class="stat-card">Spins<span id="stat-spins" class="stat-val">0</span></div>
@@ -86,7 +87,7 @@
     <div class="main-layout">
         <div>
             <div id="prediction-output"></div>
-            <div class="card"><strong>Recent History</strong><hr><div id="bet-history" style="font-size: 11px;"></div></div>
+            <div class="card"><strong>History</strong><hr><div id="bet-history" style="font-size: 11px;"></div></div>
         </div>
         <div class="card">
             <strong>Tracker</strong>
@@ -100,11 +101,11 @@
 
     <div class="bulk-area">
         <strong>Bulk Results Test</strong>
-        <textarea id="bulk-input" placeholder="Paste: 32, 15, 19..."></textarea>
+        <textarea id="bulk-input" placeholder="Paste data here..."></textarea>
         <div class="action-btns">
             <button class="btn btn-run" onclick="runBulk()">RUN BULK</button>
             <button class="btn btn-undo" onclick="undoLast()">UNDO</button>
-            <button class="btn btn-reset" onclick="resetSession()">RESET SESSION</button>
+            <button class="btn btn-reset" onclick="resetSession()">RESET</button>
         </div>
     </div>
 </div>
@@ -117,14 +118,20 @@
     let bankroll = 1000, startBank = 1000, mult = 1, currentLosses = 0, currentWins = 0, maxBet = 0, maxDD = 0, isStopped = false;
     let historyStack = [];
 
-    // Dropdowns init
-    const ls = document.getElementById('loss-step');
-    const ws = document.getElementById('win-step');
-    for(let i=1; i<=6; i++) {
-        ls.add(new Option(i + " Loss", i));
-        ws.add(new Option(i + " Win", i));
+    // Fill Dropdowns
+    const lt = document.getElementById('loss-trigger');
+    const la = document.getElementById('loss-amount');
+    const wt = document.getElementById('win-trigger');
+    const wa = document.getElementById('win-amount');
+
+    for(let i=1; i<=15; i++) {
+        lt.add(new Option(i + " Loss", i));
+        la.add(new Option("Add "+i, i));
+        wt.add(new Option(i + " Win", i));
+        wa.add(new Option("Sub "+i, i));
     }
-    ls.value = 2; ws.value = 1;
+    lt.value = 2; la.value = 1; wt.value = 1; wa.value = 1;
+
     for(let i=1; i<=35; i++) document.getElementById('dist-lock').add(new Option("Lock: " + i, i));
 
     const bg = document.getElementById('btns');
@@ -146,7 +153,7 @@
     function getGroupData(num, mode) {
         if (num === 0 && mode !== 'straight') return { label: "Zero", nums: [0] };
         let n = parseInt(num);
-        if(mode === 'straight') return { label: n.toString(), nums: [n] };
+        if(mode === 'straight') return { label: "S-"+n, nums: [n] };
         if(mode === 'street') return { label: `ST ${Math.floor((n-1)/3)+1}`, nums: [Math.floor((n-1)/3)*3+1, Math.floor((n-1)/3)*3+2, Math.floor((n-1)/3)*3+3] };
         if(mode === 'dstreet') return { label: `DS ${Math.floor((n-1)/6)+1}`, nums: [Math.floor((n-1)/6)*6+1, Math.floor((n-1)/6)*6+2, Math.floor((n-1)/6)*6+3, Math.floor((n-1)/6)*6+4, Math.floor((n-1)/6)*6+5, Math.floor((n-1)/6)*6+6] };
         if(mode === 'dozen') return { label: `DOZ ${Math.ceil(n/12)}`, nums: Array.from({length: 12}, (_, i) => (Math.ceil(n/12)-1)*12 + 1 + i) };
@@ -165,26 +172,27 @@
         if (activeL.size > 0) {
             let stake = activeL.size * unit * mult;
             if(stake > maxBet) maxBet = stake;
-
-            if (bankroll < stake) {
-                isStopped = true;
-                showStatus("STOP: Insufficient Balance", "danger");
-                return;
-            }
+            if (bankroll < stake) { isStopped = true; showStatus("INSUFFICIENT BALANCE", "danger"); return; }
 
             bankroll -= stake;
             let win = activeN.has(val);
             if (win) {
-                let payout = mode==='dozen'?3 : mode==='dstreet'?6 : mode==='street'?12 : 36;
-                bankroll += (unit * mult * payout);
+                let p = mode==='dozen'?3 : mode==='dstreet'?6 : mode==='street'?12 : 36;
+                bankroll += (unit * mult * p);
                 currentLosses = 0; currentWins++;
-                if (currentWins >= parseInt(ws.value)) { mult = Math.max(1, mult - 1); currentWins = 0; }
+                if (currentWins >= parseInt(wt.value)) { 
+                    mult = Math.max(1, mult - parseInt(wa.value)); 
+                    currentWins = 0; 
+                }
                 betStack = []; 
             } else {
                 currentWins = 0; currentLosses++;
-                if (currentLosses >= parseInt(ls.value)) { mult++; currentLosses = 0; }
+                if (currentLosses >= parseInt(lt.value)) { 
+                    mult += parseInt(la.value); 
+                    currentLosses = 0; 
+                }
             }
-            predictionLog.unshift({ res: val, win, cost: stake });
+            predictionLog.unshift({ res: val, win, cost: stake, m: mult });
             if(startBank - bankroll > maxDD) maxDD = startBank - bankroll;
         }
         spins.push(val);
@@ -207,8 +215,7 @@
                 let log = document.getElementById('dist-log');
                 log.innerHTML = `<strong>Log</strong><hr><div style="font-size:10px">${prev}→${last} | <b>D:${d}</b></div>` + log.innerHTML.replace('<strong>Log</strong><hr>', '');
             }
-            const lock = document.getElementById('dist-lock').value;
-            const useD = lock === 'auto' ? d : parseInt(lock);
+            const useD = document.getElementById('dist-lock').value === 'auto' ? d : parseInt(document.getElementById('dist-lock').value);
             const mode = document.getElementById('bet-mode').value;
             
             const g1 = getGroupData(wheel[(wheel.indexOf(last) + useD) % 37], mode);
@@ -228,7 +235,7 @@
             updateFreq();
         }
         document.getElementById('bet-history').innerHTML = predictionLog.slice(0, 5).map(l => 
-            `<div style="border-bottom:1px solid #eee">Spin ${l.res}: ${l.win?'WIN':'LOSS'} (Cost: ${l.cost})</div>`).join('');
+            `<div style="border-bottom:1px solid #eee">Spin ${l.res}: ${l.win?'WIN':'LOSS'} (Bet: ${l.cost})</div>`).join('');
     }
 
     function updateFreq() {

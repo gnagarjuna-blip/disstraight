@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIET Pro - Custom Progression Simulator</title>
+    <title>BIET Pro - Distance Tracker & Profit Stop</title>
     <style>
         :root { 
             --bg: #f0f2f5; --dark: #1e272e; --accent: #00d2d3; 
-            --win: #1dd1a1; --loss: #ff6b6b; --gold: #f1c40f; 
-            --ready: #0984e3; --not-bet: #636e72; --stop: #d63031;
+            --win: #1dd1a1; --loss: #ff6b6b; --ready: #0984e3; --stop: #d63031;
         }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         .container { width: 100%; max-width: 1250px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
@@ -25,26 +24,21 @@
         .main-layout { display: grid; grid-template-columns: 1.2fr 1.3fr; gap: 15px; }
         .card { padding: 15px; border-radius: 12px; border: 1px solid #ddd; background: #fff; margin-bottom: 10px; }
         
-        .tracker-flex { display: flex; gap: 10px; min-height: 250px; }
-        .dist-col, .freq-col, .missing-col { flex: 1; max-height: 300px; overflow-y: auto; padding: 0 5px; border-right: 1px solid #eee; }
-        
         .num-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 4px; margin-bottom: 15px; }
         .n-btn { padding: 12px 0; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; }
         .r { background: #e84118; } .b { background: #2f3640; } .g { background: #44bd32; }
 
-        .bulk-area { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-top: 20px; border: 2px dashed #cbd5e0; }
-        textarea { width: 100%; height: 80px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-family: monospace; box-sizing: border-box; }
-        
         .action-btns { display: flex; gap: 10px; margin-top: 10px; }
         .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; }
         .btn-run { background: var(--ready); }
-        .btn-undo { background: var(--not-bet); }
         .btn-reset { background: var(--stop); }
 
-        .bet-label { display: inline-block; background: #e17055; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin: 2px; font-weight: bold; }
-        .missing-num { display: inline-block; width: 22px; margin: 2px; padding: 2px; background: #f1f2f6; text-align: center; border-radius: 3px; font-size: 10px; }
-        #status-msg { width: 100%; padding: 10px; text-align: center; border-radius: 8px; margin-bottom: 10px; font-weight: bold; display: none; }
+        .bet-label { display: inline-block; background: #e17055; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; margin: 2px; font-weight: bold; }
+        #status-msg { width: 100%; padding: 12px; text-align: center; border-radius: 8px; margin-bottom: 15px; font-weight: bold; display: none; }
         .danger { background: #ff7675; color: white; display: block !important; }
+        .success { background: #1dd1a1; color: white; display: block !important; }
+        
+        textarea { width: 100%; height: 60px; margin: 10px 0; border-radius: 5px; border: 1px solid #ccc; padding: 8px; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -53,8 +47,9 @@
     <div id="status-msg"></div>
 
     <div class="config-grid">
-        <div class="config-group"><label>Start Bank</label><input type="number" id="start-bank" value="1000"></div>
-        <div class="config-group"><label>Base Unit</label><input type="number" id="base-unit" value="1"></div>
+        <div class="config-group"><label>Start Bank</label><input type="number" id="start-bank" value="2000"></div>
+        <div class="config-group"><label>Base Unit</label><input type="number" id="base-unit" value="10"></div>
+        <div class="config-group"><label>Profit Stop</label><input type="number" id="profit-stop" value="100"></div>
         <div class="config-group">
             <label>Mode</label>
             <select id="bet-mode" onchange="resetSession()">
@@ -64,9 +59,6 @@
                 <option value="dozen">Dozens</option>
             </select>
         </div>
-        <div class="config-group"><label>Dist Lock</label><select id="dist-lock"><option value="auto">Auto</option></select></div>
-        <div class="config-group"><label>Pivots</label><input type="number" id="max-accum" value="1" min="1"></div>
-        
         <div class="config-group"><label>Loss Step</label><select id="loss-trigger"></select></div>
         <div class="config-group"><label>Loss Add (+)</label><select id="loss-amount"></select></div>
         <div class="config-group"><label>Win Step</label><select id="win-trigger"></select></div>
@@ -74,7 +66,7 @@
     </div>
 
     <div class="stats-bar">
-        <div class="stat-card">Balance<span id="stat-balance" class="stat-val">1000</span></div>
+        <div class="stat-card">Balance<span id="stat-balance" class="stat-val">2000</span></div>
         <div class="stat-card">Profit<span id="stat-profit" class="stat-val">0</span></div>
         <div class="stat-card">Multi<span id="stat-mult" class="stat-val">1</span></div>
         <div class="stat-card">Max Bet<span id="stat-maxbet" class="stat-val">0</span></div>
@@ -87,25 +79,21 @@
     <div class="main-layout">
         <div>
             <div id="prediction-output"></div>
-            <div class="card"><strong>History</strong><hr><div id="bet-history" style="font-size: 11px;"></div></div>
+            <div class="card"><strong>Spin History</strong><hr><div id="bet-history" style="font-size: 11px;"></div></div>
         </div>
         <div class="card">
-            <strong>Tracker</strong>
-            <div class="tracker-flex">
-                <div id="dist-log" class="dist-col"><strong>Log</strong><hr></div>
-                <div id="freq-rank" class="freq-col"><strong>Freq</strong><hr></div>
-                <div id="missing-dist" class="missing-col"><strong>Missing</strong><hr></div>
-            </div>
+            <strong>Distance Tracker</strong>
+            <div id="dist-log" style="max-height: 250px; overflow-y: auto; font-size: 11px; padding: 10px;"></div>
         </div>
     </div>
 
-    <div class="bulk-area">
-        <strong>Bulk Results Test</strong>
-        <textarea id="bulk-input" placeholder="Paste data here..."></textarea>
+    <div class="card" style="margin-top:20px; background:#f8f9fa;">
+        <strong>Bulk Simulation</strong>
+        <textarea id="bulk-input" placeholder="Paste historical numbers..."></textarea>
         <div class="action-btns">
-            <button class="btn btn-run" onclick="runBulk()">RUN BULK</button>
-            <button class="btn btn-undo" onclick="undoLast()">UNDO</button>
-            <button class="btn btn-reset" onclick="resetSession()">RESET</button>
+            <button class="btn btn-run" onclick="runBulk()">SIMULATE</button>
+            <button class="btn" style="background:#636e72" onclick="undoLast()">UNDO</button>
+            <button class="btn btn-reset" onclick="resetSession()">RESET ALL</button>
         </div>
     </div>
 </div>
@@ -113,58 +101,44 @@
 <script>
     const wheel = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
     const reds = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
-    
-    let spins = [], distHistory = [], predictionLog = [], betStack = [];
-    let bankroll = 1000, startBank = 1000, mult = 1, currentLosses = 0, currentWins = 0, maxBet = 0, maxDD = 0, isStopped = false;
-    let historyStack = [];
+    let spins = [], predLog = [], betStack = [], historyStack = [];
+    let bankroll = 2000, startBank = 2000, mult = 1, curLoss = 0, curWin = 0, maxBet = 0, maxDD = 0, isStopped = false;
 
-    // Fill Dropdowns
-    const lt = document.getElementById('loss-trigger');
-    const la = document.getElementById('loss-amount');
-    const wt = document.getElementById('win-trigger');
-    const wa = document.getElementById('win-amount');
-
-    for(let i=1; i<=15; i++) {
-        lt.add(new Option(i + " Loss", i));
-        la.add(new Option("Add "+i, i));
-        wt.add(new Option(i + " Win", i));
-        wa.add(new Option("Sub "+i, i));
+    // Fill selects 0-15
+    const lt=document.getElementById('loss-trigger'), la=document.getElementById('loss-amount'), wt=document.getElementById('win-trigger'), wa=document.getElementById('win-amount');
+    for(let i=0; i<=15; i++) {
+        lt.add(new Option(i+" Loss", i)); la.add(new Option("Add "+i, i));
+        wt.add(new Option(i+" Win", i)); wa.add(new Option("Sub "+i, i));
     }
-    lt.value = 2; la.value = 1; wt.value = 1; wa.value = 1;
-
-    for(let i=1; i<=35; i++) document.getElementById('dist-lock').add(new Option("Lock: " + i, i));
+    lt.value=2; la.value=1; wt.value=1; wa.value=1;
 
     const bg = document.getElementById('btns');
     for(let i=1; i<=36; i++) {
         const b = document.createElement('button');
-        b.className = `n-btn ${reds.includes(i) ? 'r' : 'b'}`;
-        b.innerText = i; b.onclick = () => press(i);
-        bg.appendChild(b);
+        b.className = `n-btn ${reds.includes(i)?'r':'b'}`; b.innerText = i; b.onclick = () => press(i); bg.appendChild(b);
     }
 
     function resetSession() {
         startBank = parseFloat(document.getElementById('start-bank').value);
-        bankroll = startBank; mult = 1; currentLosses = 0; currentWins = 0; maxBet = 0; maxDD = 0;
-        spins = []; distHistory = []; predictionLog = []; betStack = []; isStopped = false;
-        document.getElementById('dist-log').innerHTML = '<strong>Log</strong><hr>';
-        updateUI();
+        bankroll = startBank; mult = 1; curLoss = 0; curWin = 0; maxBet = 0; maxDD = 0;
+        spins = []; predLog = []; betStack = []; historyStack = []; isStopped = false;
+        document.getElementById('dist-log').innerHTML = ''; showStatus("", ""); updateUI();
     }
 
     function getGroupData(num, mode) {
-        if (num === 0 && mode !== 'straight') return { label: "Zero", nums: [0] };
-        let n = parseInt(num);
-        if(mode === 'straight') return { label: "S-"+n, nums: [n] };
-        if(mode === 'street') return { label: `ST ${Math.floor((n-1)/3)+1}`, nums: [Math.floor((n-1)/3)*3+1, Math.floor((n-1)/3)*3+2, Math.floor((n-1)/3)*3+3] };
-        if(mode === 'dstreet') return { label: `DS ${Math.floor((n-1)/6)+1}`, nums: [Math.floor((n-1)/6)*6+1, Math.floor((n-1)/6)*6+2, Math.floor((n-1)/6)*6+3, Math.floor((n-1)/6)*6+4, Math.floor((n-1)/6)*6+5, Math.floor((n-1)/6)*6+6] };
-        if(mode === 'dozen') return { label: `DOZ ${Math.ceil(n/12)}`, nums: Array.from({length: 12}, (_, i) => (Math.ceil(n/12)-1)*12 + 1 + i) };
+        let n = parseInt(num); if(n===0 && mode!=='straight') return {label:"Zero", nums:[0]};
+        if(mode==='straight') return {label:"Num "+n, nums:[n]};
+        if(mode==='street') return {label:"Street "+(Math.floor((n-1)/3)+1), nums:[Math.floor((n-1)/3)*3+1, Math.floor((n-1)/3)*3+2, Math.floor((n-1)/3)*3+3]};
+        if(mode==='dstreet') return {label:"D-Street "+(Math.floor((n-1)/6)+1), nums:[Math.floor((n-1)/6)*6+1, Math.floor((n-1)/6)*6+2, Math.floor((n-1)/6)*6+3, Math.floor((n-1)/6)*6+4, Math.floor((n-1)/6)*6+5, Math.floor((n-1)/6)*6+6]};
+        if(mode==='dozen') return {label:"Dozen "+Math.ceil(n/12), nums:Array.from({length:12},(_,i)=>(Math.ceil(n/12)-1)*12+1+i)};
     }
 
     function press(val) {
         if(isStopped) return;
-        historyStack.push(JSON.stringify({spins, distHistory, predictionLog, betStack, bankroll, mult, currentLosses, currentWins, maxBet, maxDD, isStopped}));
-        
+        historyStack.push(JSON.stringify({spins, predLog, betStack, bankroll, mult, curLoss, curWin, maxBet, maxDD}));
         const unit = parseFloat(document.getElementById('base-unit').value);
         const mode = document.getElementById('bet-mode').value;
+        const target = parseFloat(document.getElementById('profit-stop').value);
 
         let activeL = new Set(), activeN = new Set();
         betStack.flat().forEach(g => { activeL.add(g.label); g.nums.forEach(n => activeN.add(n)); });
@@ -172,31 +146,29 @@
         if (activeL.size > 0) {
             let stake = activeL.size * unit * mult;
             if(stake > maxBet) maxBet = stake;
-            if (bankroll < stake) { isStopped = true; showStatus("INSUFFICIENT BALANCE", "danger"); return; }
-
+            if(bankroll < stake) { isStopped=true; showStatus("INSUFFICIENT BALANCE", "danger"); return; }
+            
             bankroll -= stake;
             let win = activeN.has(val);
-            if (win) {
+            if(win) {
                 let p = mode==='dozen'?3 : mode==='dstreet'?6 : mode==='street'?12 : 36;
-                bankroll += (unit * mult * p);
-                currentLosses = 0; currentWins++;
-                if (currentWins >= parseInt(wt.value)) { 
-                    mult = Math.max(1, mult - parseInt(wa.value)); 
-                    currentWins = 0; 
-                }
-                betStack = []; 
+                bankroll += (unit * mult * p); curLoss = 0; curWin++;
+                if(curWin >= parseInt(wt.value)) { mult = Math.max(1, mult - parseInt(wa.value)); curWin = 0; }
+                betStack = [];
             } else {
-                currentWins = 0; currentLosses++;
-                if (currentLosses >= parseInt(lt.value)) { 
-                    mult += parseInt(la.value); 
-                    currentLosses = 0; 
-                }
+                curWin = 0; curLoss++;
+                if(curLoss >= parseInt(lt.value)) { mult += parseInt(la.value); curLoss = 0; }
             }
-            predictionLog.unshift({ res: val, win, cost: stake, m: mult });
+            predLog.unshift({res:val, win, cost:stake});
             if(startBank - bankroll > maxDD) maxDD = startBank - bankroll;
+
+            // Profit Stop Trigger
+            if((bankroll - startBank) >= target) { 
+                isStopped=true; 
+                showStatus("PROFIT GOAL ACHIEVED: +" + (bankroll - startBank).toFixed(1), "success"); 
+            }
         }
-        spins.push(val);
-        updateUI();
+        spins.push(val); updateUI();
     }
 
     function updateUI() {
@@ -206,57 +178,32 @@
         document.getElementById('stat-maxbet').innerText = maxBet.toFixed(1);
         document.getElementById('stat-draw').innerText = maxDD.toFixed(1);
         document.getElementById('stat-spins').innerText = spins.length;
-
         if (spins.length >= 2) {
             const last = spins[spins.length-1], prev = spins[spins.length-2];
             const d = (wheel.indexOf(last) - wheel.indexOf(prev) + 37) % 37;
-            if(spins.length > distHistory.length + 1) {
-                distHistory.push(d);
-                let log = document.getElementById('dist-log');
-                log.innerHTML = `<strong>Log</strong><hr><div style="font-size:10px">${prev}→${last} | <b>D:${d}</b></div>` + log.innerHTML.replace('<strong>Log</strong><hr>', '');
-            }
-            const useD = document.getElementById('dist-lock').value === 'auto' ? d : parseInt(document.getElementById('dist-lock').value);
             const mode = document.getElementById('bet-mode').value;
-            
-            const g1 = getGroupData(wheel[(wheel.indexOf(last) + useD) % 37], mode);
-            const g2 = getGroupData(wheel[(wheel.indexOf(last) - useD + 37) % 37], mode);
-
+            if(spins.length > predLog.length + 1) {
+                document.getElementById('dist-log').innerHTML = `<div>${prev}→${last} | <b>Dist: ${d}</b></div>` + document.getElementById('dist-log').innerHTML;
+            }
+            const g1 = getGroupData(wheel[(wheel.indexOf(last) + d) % 37], mode);
+            const g2 = getGroupData(wheel[(wheel.indexOf(last) - d + 37) % 37], mode);
             betStack.unshift([g1, g2]);
-            while(betStack.length > parseInt(document.getElementById('max-accum').value)) betStack.pop();
-
-            let activeL = new Set();
-            betStack.flat().forEach(g => activeL.add(g.label));
-
-            document.getElementById('prediction-output').innerHTML = `
-                <div class="card" style="border-left:5px solid var(--ready)">
-                    <strong>Next Bet</strong><br>
-                    ${Array.from(activeL).map(l => `<span class="bet-label">${l}</span>`).join('')}
-                </div>`;
-            updateFreq();
+            if(betStack.length > 1) betStack.pop();
+            let labels = new Set(); betStack.flat().forEach(g => labels.add(g.label));
+            document.getElementById('prediction-output').innerHTML = `<div class="card" style="border-left:5px solid var(--ready)"><strong>Prediction:</strong><br>${Array.from(labels).map(l=>`<span class="bet-label">${l}</span>`).join('')}</div>`;
         }
-        document.getElementById('bet-history').innerHTML = predictionLog.slice(0, 5).map(l => 
-            `<div style="border-bottom:1px solid #eee">Spin ${l.res}: ${l.win?'WIN':'LOSS'} (Bet: ${l.cost})</div>`).join('');
-    }
-
-    function updateFreq() {
-        let fMap = {}, hitSet = new Set();
-        distHistory.forEach(d => { fMap[d] = (fMap[d] || 0) + 1; hitSet.add(d); });
-        let sorted = Object.entries(fMap).sort((a,b) => b[1]-a[1]);
-        document.getElementById('freq-rank').innerHTML = '<strong>Freq</strong><hr>' + sorted.slice(0,10).map(x => `<div style="font-size:10px">D${x[0]}: ${x[1]}x</div>`).join('');
-        let mHtml = ''; for(let i=0; i<=36; i++) if(!hitSet.has(i)) mHtml += `<span class="missing-num">${i}</span>`;
-        document.getElementById('missing-dist').innerHTML = '<strong>Missing</strong><hr>' + mHtml;
+        document.getElementById('bet-history').innerHTML = predLog.slice(0, 5).map(l => `<div style="border-bottom:1px solid #eee">Spin ${l.res}: ${l.win?'WIN':'LOSS'} (-${l.cost})</div>`).join('');
     }
 
     function undoLast() {
         if(historyStack.length === 0) return;
         let s = JSON.parse(historyStack.pop());
-        ({spins, distHistory, predictionLog, betStack, bankroll, mult, currentLosses, currentWins, maxBet, maxDD, isStopped} = s);
-        updateUI();
+        ({spins, predLog, betStack, bankroll, mult, curLoss, curWin, maxBet, maxDD} = s);
+        isStopped = false; showStatus("", ""); updateUI();
     }
 
     function runBulk() {
-        const input = document.getElementById('bulk-input').value;
-        const numbers = input.split(/[,\s\n]+/).filter(x => x !== "").map(Number);
+        const numbers = document.getElementById('bulk-input').value.split(/[,\s\n]+/).filter(x => x !== "").map(Number);
         numbers.forEach(n => { if(!isStopped) press(n); });
     }
 
@@ -264,7 +211,6 @@
         const div = document.getElementById('status-msg');
         div.innerText = msg; div.className = type;
     }
-
     resetSession();
 </script>
 </body>

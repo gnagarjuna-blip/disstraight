@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIET Pro - 3 Unique DS Tracker</title>
+    <title>BIET Pro - Accumulator Mode</title>
     <style>
         :root { 
             --bg: #f0f2f5; --dark: #1e272e; --accent: #00d2d3; 
@@ -29,11 +29,11 @@
         .main-layout { display: grid; grid-template-columns: 1fr 300px; gap: 15px; }
         .card { padding: 15px; border-radius: 12px; border: 1px solid #ddd; background: #fff; margin-bottom: 10px; }
         
-        .bet-container { display: flex; gap: 10px; margin-top: 10px; }
-        .bet-box { flex: 1; text-align: center; padding: 15px; border-radius: 8px; border: 2px solid #f1f2f6; background: #fdfdfd; }
+        .bet-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .bet-box { min-width: 80px; text-align: center; padding: 10px; border-radius: 8px; border: 2px solid #f1f2f6; background: #fdfdfd; }
         .bet-box.active { border-color: var(--win); background: #f0fff4; box-shadow: 0 4px 10px rgba(29, 209, 161, 0.2); }
-        .bet-box .label { font-weight: 800; display: block; font-size: 18px; color: #2d3436; }
-        .bet-box .stake { color: var(--win); font-weight: 900; font-size: 14px; margin-top: 5px; display: none; }
+        .bet-box .label { font-weight: 800; display: block; font-size: 14px; color: #2d3436; }
+        .bet-box .stake { color: var(--win); font-weight: 900; font-size: 12px; margin-top: 3px; display: none; }
         .bet-box.active .stake { display: block; }
 
         .status-tag { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; display: inline-block; margin-bottom: 10px; }
@@ -56,8 +56,8 @@
         <div class="config-group">
             <label>Mode</label>
             <select id="bet-mode" onchange="resetSession()">
-                <option value="dstreet">3 Double Streets</option>
-                <option value="street">3 Streets</option>
+                <option value="dstreet">Double Streets (3+ Accum)</option>
+                <option value="street">Streets (3+ Accum)</option>
             </select>
         </div>
         <div class="config-group"><label>Loss Step</label><input type="number" id="loss-step" value="2"></div>
@@ -66,10 +66,11 @@
 
     <div class="stats-bar">
         <div class="stat-card">Balance<span id="stat-balance" class="stat-val">1000</span></div>
-        <div class="stat-card">Peak<span id="stat-peak" class="stat-val" style="color:var(--gold)">1000</span></div>
+        <div class="stat-card">Peak<span id="stat-peak" class="stat-val">1000</span></div>
         <div class="stat-card">Profit<span id="stat-profit" class="stat-val">0</span></div>
         <div class="stat-card">Multi<span id="stat-mult" class="stat-val">1</span></div>
         <div class="stat-card">Virtual L<span id="stat-trigger" class="stat-val">0</span></div>
+        <div class="stat-card">Active Bets<span id="stat-active-count" class="stat-val">0</span></div>
         <div class="stat-card">Spins<span id="stat-spins" class="stat-val">0</span></div>
     </div>
 
@@ -88,10 +89,10 @@
         </div>
 
         <div class="card">
-            <strong>Distance Tracker</strong><hr>
+            <strong>Clockwise Tracker</strong><hr>
             <div class="tracker-grid">
-                <div class="scroll-list" id="dist-log"><strong>Latest Dists</strong><br></div>
-                <div class="scroll-list" id="freq-rank"><strong>Freq (Clockwise)</strong><br></div>
+                <div class="scroll-list" id="dist-log"><strong>Latest CW Dists</strong><br></div>
+                <div class="scroll-list" id="freq-rank"><strong>Freq Ranking</strong><br></div>
             </div>
         </div>
     </div>
@@ -177,14 +178,17 @@
                     currentLosses = 0; currentWins++;
                     if (currentWins % parseInt(document.getElementById('win-step').value) === 0) mult = Math.max(1, mult - 1);
                     virtualLosses = 0; 
+                    betStack = []; // Reset stack on win
                 } else {
                     currentWins = 0; currentLosses++;
                     if (currentLosses % parseInt(document.getElementById('loss-step').value) === 0) mult++;
+                    // betStack is KEPT for accumulation in updateUI
                 }
                 predictionLog.unshift({ res: val, win: isWin, cost: totalStake, type: 'ACTUAL' });
             } else {
                 if (isWin) virtualLosses = 0; else virtualLosses++;
                 predictionLog.unshift({ res: val, win: isWin, cost: 0, type: 'VIRTUAL' });
+                betStack = []; // Reset stack in virtual mode to keep only fresh 3
             }
         }
 
@@ -215,37 +219,50 @@
             const unit = parseFloat(document.getElementById('base-unit').value);
             const trigger = mode === 'street' ? 4 : 2;
 
-            // Frequency Map
             let fMap = {};
             distanceHistory.forEach(d => fMap[d] = (fMap[d] || 0) + 1);
             let sortedFreqs = Object.entries(fMap).sort((a,b) => b[1]-a[1]);
 
-            // SELECTION LOGIC: Always find 3 UNIQUE streets
-            let selectedStreets = [];
-            let uniqueLabels = new Set();
-
-            // 1. Add First DS from Latest Distance
+            // Calculate 3 NEW predictions
+            let newPredictions = [];
+            let uniqueLabelsInNew = new Set();
+            
+            // 1. Latest Dist
             let ds1 = getGroupData(wheel[(wheel.indexOf(lastNum) + latestDist) % 37], mode);
-            selectedStreets.push(ds1);
-            uniqueLabels.add(ds1.label);
+            newPredictions.push(ds1);
+            uniqueLabelsInNew.add(ds1.label);
 
-            // 2. Add next two from most frequent, skipping duplicates
+            // 2 & 3 from Freq
             for (let entry of sortedFreqs) {
-                if (selectedStreets.length >= 3) break;
+                if (newPredictions.length >= 3) break;
                 let dVal = parseInt(entry[0]);
                 let dsTemp = getGroupData(wheel[(wheel.indexOf(lastNum) + dVal) % 37], mode);
-                
-                if (!uniqueLabels.has(dsTemp.label)) {
-                    selectedStreets.push(dsTemp);
-                    uniqueLabels.add(dsTemp.label);
+                if (!uniqueLabelsInNew.has(dsTemp.label)) {
+                    newPredictions.push(dsTemp);
+                    uniqueLabelsInNew.add(dsTemp.label);
                 }
             }
-            
-            betStack = selectedStreets;
 
+            // ACCUMULATION LOGIC
             let isBetting = virtualLosses >= trigger;
+            if (isBetting) {
+                // Add new predictions to existing stack, avoiding duplicates
+                let existingLabels = new Set(betStack.map(b => b.label));
+                newPredictions.forEach(pred => {
+                    if (!existingLabels.has(pred.label)) {
+                        betStack.push(pred);
+                        existingLabels.add(pred.label);
+                    }
+                });
+            } else {
+                // In virtual mode, we only track the fresh 3
+                betStack = newPredictions;
+            }
+
+            document.getElementById('stat-active-count').innerText = betStack.length;
+
             document.getElementById('trigger-status').innerHTML = isBetting ? 
-                `<span class="status-tag tag-bet">BETTING ACTIVE</span>` : 
+                `<span class="status-tag tag-bet">BETTING ACTIVE (ACCUMULATING)</span>` : 
                 `<span class="status-tag tag-wait">VIRTUAL WAIT (${virtualLosses}/${trigger}L)</span>`;
 
             document.getElementById('bet-display').innerHTML = betStack.map(g => `
@@ -255,7 +272,7 @@
                 </div>
             `).join('');
 
-            document.getElementById('dist-log').innerHTML = `<strong>Latest Dists</strong><br>` + distanceHistory.slice(-10).reverse().map(d => `<div>${d}</div>`).join('');
+            document.getElementById('dist-log').innerHTML = `<strong>Latest CW Dists</strong><br>` + distanceHistory.slice(-10).reverse().map(d => `<div>${d}</div>`).join('');
             document.getElementById('freq-rank').innerHTML = `<strong>Freq Ranking</strong><br>` + sortedFreqs.slice(0, 10).map(x => `<div>D${x[0]}: ${x[1]}x</div>`).join('');
         }
 

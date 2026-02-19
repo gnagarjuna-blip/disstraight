@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIET Pro - Accumulator Tracker</title>
+    <title>BIET Pro - Individual Accumulator</title>
     <style>
         :root { 
             --bg: #f0f2f5; --dark: #1e272e; --accent: #00d2d3; 
-            --win: #1dd1a1; --loss: #ff6b6b; --gold: #f1c40f; 
-            --ready: #0984e3; --not-bet: #636e72;
+            --win: #1dd1a1; --loss: #ff6b6b; --ready: #0984e3;
         }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 1100px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .container { width: 100%; max-width: 1150px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
         .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 15px; background: #dfe6e9; padding: 12px; border-radius: 10px; }
         .config-group { display: flex; flex-direction: column; }
@@ -21,26 +20,34 @@
         .market-selector { display: flex; gap: 15px; background: #f8f9fa; padding: 10px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #ddd; }
         .market-option { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: bold; cursor: pointer; }
 
-        .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; margin-bottom: 15px; }
+        .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 15px; }
         .stat-card { background: var(--dark); color: white; padding: 10px; border-radius: 8px; text-align: center; border-bottom: 3px solid var(--accent); }
         .stat-val { font-size: 14px; font-weight: bold; display: block; color: var(--accent); }
 
         .num-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 4px; margin-bottom: 15px; }
-        .n-btn { padding: 12px 0; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; }
+        .n-btn { padding: 12px 0; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .n-btn:hover { opacity: 0.8; transform: scale(0.95); }
         .r { background: #e84118; } .b { background: #2f3640; } .g { background: #44bd32; }
 
-        .main-layout { display: grid; grid-template-columns: 1fr 300px; gap: 15px; }
+        .main-layout { display: grid; grid-template-columns: 1fr 320px; gap: 15px; }
         .card { padding: 15px; border-radius: 12px; border: 1px solid #ddd; background: #fff; margin-bottom: 10px; }
         
-        .bet-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-top: 10px; }
-        .bet-box { text-align: center; padding: 10px; border-radius: 8px; border: 2px solid #00d2d3; background: #f0ffff; }
-        .bet-box .label { font-weight: 800; display: block; font-size: 13px; color: #2d3436; }
-        .bet-box .type { font-size: 9px; color: #636e72; text-transform: uppercase; }
+        /* Individual Bet Card Styling */
+        .bet-display-area { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 10px; }
+        .bet-individual-card { 
+            background: #fff; border: 1px solid #e0e0e0; border-left: 4px solid var(--accent);
+            border-radius: 8px; padding: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .bet-individual-card .bet-label { font-size: 16px; font-weight: 900; color: #2d3436; }
+        .bet-individual-card .bet-info { font-size: 10px; color: #636e72; text-transform: uppercase; letter-spacing: 0.5px; }
+        .bet-individual-card .bet-nums { font-size: 9px; color: #b2bec3; margin-top: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
         .tracker-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 220px; }
         .scroll-list { overflow-y: auto; font-size: 11px; border: 1px solid #f1f2f6; border-radius: 5px; padding: 5px; }
 
-        textarea { width: 100%; height: 60px; padding: 10px; border-radius: 5px; margin-top: 10px; box-sizing: border-box; }
+        textarea { width: 100%; height: 60px; padding: 10px; border-radius: 5px; margin-top: 10px; box-sizing: border-box; border: 1px solid #ddd; }
+        .btn-row { display: flex; gap: 10px; margin-top: 10px; }
         .btn { padding: 10px; border: none; border-radius: 5px; cursor: pointer; color: white; font-weight: bold; flex: 1; }
     </style>
 </head>
@@ -50,7 +57,7 @@
     <div class="config-grid">
         <div class="config-group"><label>Start Bank</label><input type="number" id="start-bank" value="1000" onchange="syncBank()"></div>
         <div class="config-group"><label>Base Unit</label><input type="number" id="base-unit" value="1"></div>
-        <div class="config-group"><label>Max Multi</label><input type="number" id="max-mult" value="50"></div>
+        <div class="config-group"><label>Max Multi</label><input type="number" id="max-mult" value="100"></div>
         <div class="config-group"><label>Loss Step</label><input type="number" id="loss-step" value="2"></div>
         <div class="config-group"><label>Win Step</label><input type="number" id="win-step" value="1"></div>
         <div class="config-group">
@@ -75,11 +82,11 @@
 
     <div class="stats-bar">
         <div class="stat-card">Balance<span id="stat-balance" class="stat-val">1000</span></div>
-        <div class="stat-card">Peak Bal<span id="stat-peak" class="stat-val">1000</span></div>
+        <div class="stat-card">Peak Balance<span id="stat-peak" class="stat-val">1000</span></div>
         <div class="stat-card">Profit<span id="stat-profit" class="stat-val">0</span></div>
-        <div class="stat-card">Multi<span id="stat-mult" class="stat-val">1</span></div>
+        <div class="stat-card">Multiplier<span id="stat-mult" class="stat-val">1</span></div>
         <div class="stat-card">Calc Dist<span id="stat-hot-dist" class="stat-val">--</span></div>
-        <div class="stat-card">Bet Count<span id="stat-active-count" class="stat-val">0</span></div>
+        <div class="stat-card">Total Stack<span id="stat-active-count" class="stat-val">0</span></div>
     </div>
 
     <div class="num-grid" id="btns"><button class="n-btn g" style="grid-row: span 3;" onclick="press(0)">0</button></div>
@@ -87,8 +94,8 @@
     <div class="main-layout">
         <div>
             <div class="card">
-                <strong>Current Accumulation</strong> (Until Win)
-                <div id="bet-display" class="bet-container"></div>
+                <strong>Current Active Bets</strong> (Accumulating until Win)
+                <div id="bet-display" class="bet-display-area"></div>
             </div>
             <div class="card">
                 <strong>Bet History</strong><hr>
@@ -107,10 +114,10 @@
 
     <div class="card" style="background:#f8f9fa">
         <strong>Bulk Simulation</strong>
-        <textarea id="bulk-input" placeholder="32, 15, 19..."></textarea>
-        <div style="display:flex; gap:10px; margin-top:10px;">
+        <textarea id="bulk-input" placeholder="Enter numbers separated by space or comma (e.g., 32, 15, 19)"></textarea>
+        <div class="btn-row">
             <button class="btn" style="background:var(--ready)" onclick="runBulk()">SIMULATE ALL</button>
-            <button class="btn" style="background:var(--not-bet)" onclick="undoLast()">UNDO</button>
+            <button class="btn" style="background:#636e72" onclick="undoLast()">UNDO</button>
             <button class="btn" style="background:#d63031" onclick="resetSession()">RESET</button>
         </div>
     </div>
@@ -125,6 +132,7 @@
     let currentLosses = 0, currentWins = 0;
     let historyState = [];
 
+    // Initialize UI Buttons
     const bg = document.getElementById('btns');
     for(let i=1; i<=36; i++) {
         const b = document.createElement('button');
@@ -167,17 +175,19 @@
     function getSelectedPredictions(targetNum) {
         let list = [];
         if (targetNum === 0) {
-             if(document.getElementById('play-su').checked) list.push({ label: "0", type: "SU", nums: [0], pay: 36 });
+             if(document.getElementById('play-su').checked) list.push({ label: "0", type: "Straight Up", nums: [0], pay: 36 });
              return list;
         }
         let n = parseInt(targetNum);
         let dsIdx = Math.floor((n-1)/6);
         let stIdx = Math.floor((n-1)/3);
         let dozIdx = Math.ceil(n/12);
-        if(document.getElementById('play-ds').checked) list.push({ label: `DS ${dsIdx+1}`, type: "DS", nums: Array.from({length: 6}, (_, i) => dsIdx*6+1+i), pay: 6 });
-        if(document.getElementById('play-st').checked) list.push({ label: `ST ${stIdx+1}`, type: "ST", nums: Array.from({length: 3}, (_, i) => stIdx*3+1+i), pay: 12 });
-        if(document.getElementById('play-doz').checked) list.push({ label: `DOZ ${dozIdx}`, type: "DZ", nums: Array.from({length: 12}, (_, i) => (dozIdx-1)*12+1+i), pay: 3 });
-        if(document.getElementById('play-su').checked) list.push({ label: `#${n}`, type: "SU", nums: [n], pay: 36 });
+        
+        if(document.getElementById('play-ds').checked) list.push({ label: `DS ${dsIdx+1}`, type: "D-Street", nums: Array.from({length: 6}, (_, i) => dsIdx*6+1+i), pay: 6 });
+        if(document.getElementById('play-st').checked) list.push({ label: `ST ${stIdx+1}`, type: "Street", nums: Array.from({length: 3}, (_, i) => stIdx*3+1+i), pay: 12 });
+        if(document.getElementById('play-doz').checked) list.push({ label: `DOZ ${dozIdx}`, type: "Dozen", nums: Array.from({length: 12}, (_, i) => (dozIdx-1)*12+1+i), pay: 3 });
+        if(document.getElementById('play-su').checked) list.push({ label: `#${n}`, type: "Straight Up", nums: [n], pay: 36 });
+        
         return list;
     }
 
@@ -186,7 +196,7 @@
         let unit = parseFloat(document.getElementById('base-unit').value);
         let maxAllowedMult = parseInt(document.getElementById('max-mult').value);
 
-        // 1. Process existing accumulation
+        // 1. Resolve Active Accumulation
         if (betStack.length > 0) {
             let totalStake = betStack.length * unit * mult;
             bankroll -= totalStake;
@@ -199,21 +209,19 @@
                 currentLosses = 0;
                 currentWins++;
                 if (currentWins % parseInt(document.getElementById('win-step').value) === 0) mult = Math.max(1, mult - 1);
-                // WIN! Clear accumulation
-                betStack = [];
+                betStack = []; // Clear stack on WIN
             } else {
                 currentWins = 0;
                 currentLosses++;
                 if (currentLosses % parseInt(document.getElementById('loss-step').value) === 0) {
                     mult = Math.min(maxAllowedMult, mult + 1);
                 }
-                // MISS! Bet stays and will accumulate more in UpdateUI
             }
             if(bankroll > peakBalance) peakBalance = bankroll;
             predictionLog.unshift({ res: val, win: isWin, cost: totalStake });
         }
 
-        // 2. Track Spin
+        // 2. Track Data
         spins.push(val);
         if (spins.length >= 2) {
             const last = spins[spins.length-1];
@@ -235,7 +243,7 @@
             const lastNum = spins[spins.length-1];
             const mode = document.getElementById('dist-mode').value;
             
-            // Calc Hot Dist
+            // Calc Frequencies
             let fMap = {};
             distanceHistory.forEach(d => fMap[d] = (fMap[d] || 0) + 1);
             let sortedFreqs = Object.entries(fMap).sort((a,b) => b[1]-a[1]);
@@ -250,7 +258,6 @@
             let targetNum = wheel[(wheel.indexOf(lastNum) + activeDistance) % 37];
             let newBatch = getSelectedPredictions(targetNum);
             
-            // Add only if label isn't already in stack
             newBatch.forEach(nb => {
                 if(!betStack.some(ob => ob.label === nb.label)) {
                     betStack.push(nb);
@@ -258,10 +265,13 @@
             });
 
             document.getElementById('stat-active-count').innerText = betStack.length;
+
+            // Render Individual Cards
             document.getElementById('bet-display').innerHTML = betStack.map(g => `
-                <div class="bet-box">
-                    <span class="type">${g.type}</span>
-                    <span class="label">${g.label}</span>
+                <div class="bet-individual-card">
+                    <div class="bet-info">${g.type}</div>
+                    <div class="bet-label">${g.label}</div>
+                    <div class="bet-nums">Units: ${mult}</div>
                 </div>
             `).join('');
 
@@ -271,8 +281,8 @@
 
         document.getElementById('bet-history').innerHTML = predictionLog.slice(0, 5).map(l => 
             `<div style="border-bottom:1px solid #eee; padding:3px">
-                Spin ${l.res}: ${l.win?'<span style="color:var(--win)">HIT</span>':'<span style="color:var(--loss)">MISS</span>'} 
-                <small style="float:right">-${l.cost.toFixed(0)}</small>
+                Spin ${l.res}: ${l.win?'<span style="color:var(--win); font-weight:bold">HIT</span>':'<span style="color:var(--loss)">MISS</span>'} 
+                <small style="float:right; color:#7f8c8d">Stake: ${l.cost.toFixed(0)}</small>
             </div>`).join('');
     }
 

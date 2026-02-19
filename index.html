@@ -13,10 +13,10 @@
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         .container { width: 100%; max-width: 1100px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
-        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 15px; background: #dfe6e9; padding: 12px; border-radius: 10px; }
+        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 15px; background: #dfe6e9; padding: 12px; border-radius: 10px; }
         .config-group { display: flex; flex-direction: column; }
         .config-group label { font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; color: #4b6584; }
-        .config-group input, .config-group select { padding: 6px; border-radius: 4px; border: 1px solid #b2bec3; font-weight: bold; }
+        .config-group input, .config-group select { padding: 6px; border-radius: 4px; border: 1px solid #b2bec3; font-weight: bold; font-size: 12px; }
 
         .market-selector { display: flex; gap: 15px; background: #f8f9fa; padding: 10px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #ddd; }
         .market-option { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: bold; cursor: pointer; }
@@ -58,6 +58,17 @@
         <div class="config-group"><label>Trigger L</label><input type="number" id="trigger-val" value="2"></div>
         <div class="config-group"><label>Loss Step</label><input type="number" id="loss-step" value="2"></div>
         <div class="config-group"><label>Win Step</label><input type="number" id="win-step" value="1"></div>
+        <div class="config-group">
+            <label>Dist Mode</label>
+            <select id="dist-mode" onchange="toggleDistInput()">
+                <option value="hot">Dynamic (Hot)</option>
+                <option value="fixed">Fixed Dist</option>
+            </select>
+        </div>
+        <div class="config-group">
+            <label>Fixed Val</label>
+            <input type="number" id="fixed-dist-val" value="1" disabled min="0" max="36">
+        </div>
     </div>
 
     <div class="market-selector">
@@ -72,7 +83,7 @@
         <div class="stat-card">Profit<span id="stat-profit" class="stat-val">0</span></div>
         <div class="stat-card">Multi<span id="stat-mult" class="stat-val">1</span></div>
         <div class="stat-card">Virtual L<span id="stat-trigger" class="stat-val">0</span></div>
-        <div class="stat-card">Hot Dist<span id="stat-hot-dist" class="stat-val">--</span></div>
+        <div class="stat-card">Calc Dist<span id="stat-hot-dist" class="stat-val">--</span></div>
         <div class="stat-card">Active Bets<span id="stat-active-count" class="stat-val">0</span></div>
     </div>
 
@@ -125,6 +136,12 @@
         b.className = `n-btn ${reds.includes(i) ? 'r' : 'b'}`;
         b.innerText = i; b.onclick = () => press(i);
         bg.appendChild(b);
+    }
+
+    function toggleDistInput() {
+        const mode = document.getElementById('dist-mode').value;
+        document.getElementById('fixed-dist-val').disabled = (mode === 'hot');
+        updateUI();
     }
 
     function saveState() {
@@ -227,13 +244,23 @@
             const lastNum = spins[spins.length-1];
             let trigger = parseInt(document.getElementById('trigger-val').value);
 
+            // Logic to determine which distance to use
+            const mode = document.getElementById('dist-mode').value;
+            let activeDistance = 0;
+
             let fMap = {};
             distanceHistory.forEach(d => fMap[d] = (fMap[d] || 0) + 1);
             let sortedFreqs = Object.entries(fMap).sort((a,b) => b[1]-a[1]);
-            let hotDist = parseInt(sortedFreqs[0][0]);
-            document.getElementById('stat-hot-dist').innerText = hotDist;
 
-            let targetNum = wheel[(wheel.indexOf(lastNum) + hotDist) % 37];
+            if (mode === 'hot' && sortedFreqs.length > 0) {
+                activeDistance = parseInt(sortedFreqs[0][0]);
+            } else {
+                activeDistance = parseInt(document.getElementById('fixed-dist-val').value) || 0;
+            }
+
+            document.getElementById('stat-hot-dist').innerText = activeDistance;
+
+            let targetNum = wheel[(wheel.indexOf(lastNum) + activeDistance) % 37];
             let newPredictions = getSelectedPredictions(targetNum);
 
             let isBetting = virtualLosses >= trigger;

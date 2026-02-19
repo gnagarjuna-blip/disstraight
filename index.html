@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIET Pro - Accumulator Mode</title>
+    <title>BIET Pro - Multi-Market Accumulator</title>
     <style>
         :root { 
             --bg: #f0f2f5; --dark: #1e272e; --accent: #00d2d3; 
@@ -18,7 +18,7 @@
         .config-group label { font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; color: #4b6584; }
         .config-group input, .config-group select { padding: 6px; border-radius: 4px; border: 1px solid #b2bec3; font-weight: bold; }
 
-        .stats-bar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 15px; }
+        .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; margin-bottom: 15px; }
         .stat-card { background: var(--dark); color: white; padding: 10px; border-radius: 8px; text-align: center; border-bottom: 3px solid var(--accent); }
         .stat-val { font-size: 14px; font-weight: bold; display: block; color: var(--accent); }
 
@@ -29,12 +29,11 @@
         .main-layout { display: grid; grid-template-columns: 1fr 300px; gap: 15px; }
         .card { padding: 15px; border-radius: 12px; border: 1px solid #ddd; background: #fff; margin-bottom: 10px; }
         
-        .bet-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-        .bet-box { min-width: 80px; text-align: center; padding: 10px; border-radius: 8px; border: 2px solid #f1f2f6; background: #fdfdfd; }
-        .bet-box.active { border-color: var(--win); background: #f0fff4; box-shadow: 0 4px 10px rgba(29, 209, 161, 0.2); }
-        .bet-box .label { font-weight: 800; display: block; font-size: 14px; color: #2d3436; }
-        .bet-box .stake { color: var(--win); font-weight: 900; font-size: 12px; margin-top: 3px; display: none; }
-        .bet-box.active .stake { display: block; }
+        .bet-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-top: 10px; }
+        .bet-box { text-align: center; padding: 10px; border-radius: 8px; border: 2px solid #f1f2f6; background: #fdfdfd; }
+        .bet-box.active { border-color: var(--win); background: #f0fff4; }
+        .bet-box .label { font-weight: 800; display: block; font-size: 13px; color: #2d3436; }
+        .bet-box .type { font-size: 9px; color: #636e72; text-transform: uppercase; }
 
         .status-tag { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; display: inline-block; margin-bottom: 10px; }
         .tag-wait { background: #dfe6e9; color: #636e72; }
@@ -52,26 +51,19 @@
 <div class="container">
     <div class="config-grid">
         <div class="config-group"><label>Start Bank</label><input type="number" id="start-bank" value="1000"></div>
-        <div class="config-group"><label>Base Unit</label><input type="number" id="base-unit" value="10"></div>
-        <div class="config-group">
-            <label>Mode</label>
-            <select id="bet-mode" onchange="resetSession()">
-                <option value="dstreet">Double Streets (3+ Accum)</option>
-                <option value="street">Streets (3+ Accum)</option>
-            </select>
-        </div>
+        <div class="config-group"><label>Base Unit</label><input type="number" id="base-unit" value="1"></div>
+        <div class="config-group"><label>Trigger L</label><input type="number" id="trigger-val" value="2"></div>
         <div class="config-group"><label>Loss Step</label><input type="number" id="loss-step" value="2"></div>
         <div class="config-group"><label>Win Step</label><input type="number" id="win-step" value="1"></div>
     </div>
 
     <div class="stats-bar">
         <div class="stat-card">Balance<span id="stat-balance" class="stat-val">1000</span></div>
-        <div class="stat-card">Peak<span id="stat-peak" class="stat-val">1000</span></div>
         <div class="stat-card">Profit<span id="stat-profit" class="stat-val">0</span></div>
         <div class="stat-card">Multi<span id="stat-mult" class="stat-val">1</span></div>
         <div class="stat-card">Virtual L<span id="stat-trigger" class="stat-val">0</span></div>
+        <div class="stat-card">Hot Dist<span id="stat-hot-dist" class="stat-val">--</span></div>
         <div class="stat-card">Active Bets<span id="stat-active-count" class="stat-val">0</span></div>
-        <div class="stat-card">Spins<span id="stat-spins" class="stat-val">0</span></div>
     </div>
 
     <div class="num-grid" id="btns"><button class="n-btn g" style="grid-row: span 3;" onclick="press(0)">0</button></div>
@@ -144,51 +136,53 @@
         updateUI();
     }
 
-    function getGroupData(num, mode) {
-        if (num === 0) return { label: "Zero", nums: [0] };
-        let n = parseInt(num);
-        if(mode === 'street') {
-            let row = Math.floor((n-1)/3);
-            return { label: `ST ${row+1}`, nums: [row*3+1, row*3+2, row*3+3] };
-        } else {
-            let ds = Math.floor((n-1)/6);
-            let start = ds * 6 + 1;
-            return { label: `DS ${ds+1}`, nums: [start, start+1, start+2, start+3, start+4, start+5] };
-        }
+    function getPredictionSet(targetNum) {
+        if (targetNum === 0) return [{ label: "0", type: "Straight", nums: [0], pay: 36 }];
+        
+        let n = parseInt(targetNum);
+        let dsIdx = Math.floor((n-1)/6);
+        let stIdx = Math.floor((n-1)/3);
+        let dozIdx = Math.ceil(n/12);
+
+        return [
+            { label: `DS ${dsIdx+1}`, type: "D-Street", nums: Array.from({length: 6}, (_, i) => dsIdx*6+1+i), pay: 6 },
+            { label: `ST ${stIdx+1}`, type: "Street", nums: Array.from({length: 3}, (_, i) => stIdx*3+1+i), pay: 12 },
+            { label: `DOZ ${dozIdx}`, type: "Dozen", nums: Array.from({length: 12}, (_, i) => (dozIdx-1)*12+1+i), pay: 3 },
+            { label: `#${n}`, type: "Straight", nums: [n], pay: 36 }
+        ];
     }
 
     function press(val) {
         saveState();
         let unit = parseFloat(document.getElementById('base-unit').value);
-        let mode = document.getElementById('bet-mode').value;
-        let trigger = mode === 'street' ? 4 : 2;
+        let trigger = parseInt(document.getElementById('trigger-val').value);
 
         if (betStack.length > 0) {
-            let bettingNumbers = new Set();
-            betStack.forEach(g => g.nums.forEach(n => bettingNumbers.add(n)));
-            let isWin = bettingNumbers.has(val);
+            let winAmount = 0;
+            let totalStake = betStack.length * unit * mult;
             let isActualBet = virtualLosses >= trigger;
 
+            if (isActualBet) bankroll -= totalStake;
+
+            let hitBet = betStack.find(b => b.nums.includes(val));
+            let isWin = !!hitBet;
+
             if (isActualBet) {
-                let totalStake = betStack.length * unit * mult;
-                bankroll -= totalStake;
                 if (isWin) {
-                    let payout = mode === 'dstreet' ? 6 : 12;
-                    bankroll += (unit * mult * payout);
+                    bankroll += (unit * mult * hitBet.pay);
                     currentLosses = 0; currentWins++;
                     if (currentWins % parseInt(document.getElementById('win-step').value) === 0) mult = Math.max(1, mult - 1);
                     virtualLosses = 0; 
-                    betStack = []; // Reset stack on win
+                    betStack = []; // Clear accumulation on win
                 } else {
                     currentWins = 0; currentLosses++;
                     if (currentLosses % parseInt(document.getElementById('loss-step').value) === 0) mult++;
-                    // betStack is KEPT for accumulation in updateUI
                 }
                 predictionLog.unshift({ res: val, win: isWin, cost: totalStake, type: 'ACTUAL' });
             } else {
                 if (isWin) virtualLosses = 0; else virtualLosses++;
                 predictionLog.unshift({ res: val, win: isWin, cost: 0, type: 'VIRTUAL' });
-                betStack = []; // Reset stack in virtual mode to keep only fresh 3
+                betStack = []; // Reset stack in virtual mode
             }
         }
 
@@ -200,62 +194,38 @@
             distanceHistory.push(d);
         }
 
-        if(bankroll > peakBalance) peakBalance = bankroll;
         updateUI();
     }
 
     function updateUI() {
         document.getElementById('stat-balance').innerText = bankroll.toFixed(0);
-        document.getElementById('stat-peak').innerText = peakBalance.toFixed(0);
         document.getElementById('stat-profit').innerText = (bankroll - startBank).toFixed(0);
         document.getElementById('stat-mult').innerText = mult;
         document.getElementById('stat-trigger').innerText = virtualLosses;
-        document.getElementById('stat-spins').innerText = spins.length;
 
         if (spins.length >= 2) {
             const lastNum = spins[spins.length-1];
-            const latestDist = distanceHistory[distanceHistory.length - 1];
-            const mode = document.getElementById('bet-mode').value;
-            const unit = parseFloat(document.getElementById('base-unit').value);
-            const trigger = mode === 'street' ? 4 : 2;
+            let trigger = parseInt(document.getElementById('trigger-val').value);
 
+            // Get Hot Distance
             let fMap = {};
             distanceHistory.forEach(d => fMap[d] = (fMap[d] || 0) + 1);
             let sortedFreqs = Object.entries(fMap).sort((a,b) => b[1]-a[1]);
+            let hotDist = parseInt(sortedFreqs[0][0]);
+            document.getElementById('stat-hot-dist').innerText = hotDist;
 
-            // Calculate 3 NEW predictions
-            let newPredictions = [];
-            let uniqueLabelsInNew = new Set();
-            
-            // 1. Latest Dist
-            let ds1 = getGroupData(wheel[(wheel.indexOf(lastNum) + latestDist) % 37], mode);
-            newPredictions.push(ds1);
-            uniqueLabelsInNew.add(ds1.label);
+            // Target number based on Hot Distance (CW)
+            let targetNum = wheel[(wheel.indexOf(lastNum) + hotDist) % 37];
+            let newPredictions = getPredictionSet(targetNum);
 
-            // 2 & 3 from Freq
-            for (let entry of sortedFreqs) {
-                if (newPredictions.length >= 3) break;
-                let dVal = parseInt(entry[0]);
-                let dsTemp = getGroupData(wheel[(wheel.indexOf(lastNum) + dVal) % 37], mode);
-                if (!uniqueLabelsInNew.has(dsTemp.label)) {
-                    newPredictions.push(dsTemp);
-                    uniqueLabelsInNew.add(dsTemp.label);
-                }
-            }
-
-            // ACCUMULATION LOGIC
             let isBetting = virtualLosses >= trigger;
             if (isBetting) {
-                // Add new predictions to existing stack, avoiding duplicates
+                // ACCUMULATE
                 let existingLabels = new Set(betStack.map(b => b.label));
                 newPredictions.forEach(pred => {
-                    if (!existingLabels.has(pred.label)) {
-                        betStack.push(pred);
-                        existingLabels.add(pred.label);
-                    }
+                    if (!existingLabels.has(pred.label)) betStack.push(pred);
                 });
             } else {
-                // In virtual mode, we only track the fresh 3
                 betStack = newPredictions;
             }
 
@@ -267,8 +237,8 @@
 
             document.getElementById('bet-display').innerHTML = betStack.map(g => `
                 <div class="bet-box ${isBetting ? 'active' : ''}">
+                    <span class="type">${g.type}</span>
                     <span class="label">${g.label}</span>
-                    <span class="stake">${unit * mult} Units</span>
                 </div>
             `).join('');
 

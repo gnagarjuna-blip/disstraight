@@ -53,9 +53,9 @@
 
 <div class="container">
     <div class="config-grid">
-        <div class="config-group"><label>Start Bank</label><input type="number" id="start-bank" value="1000"></div>
+        <div class="config-group"><label>Start Bank</label><input type="number" id="start-bank" value="1000" onchange="syncBank()"></div>
         <div class="config-group"><label>Base Unit</label><input type="number" id="base-unit" value="1"></div>
-        <div class="config-group"><label>Trigger L</label><input type="number" id="trigger-val" value="2"></div>
+        <div class="config-group"><label>Max Multi</label><input type="number" id="max-mult" value="50"></div>
         <div class="config-group"><label>Loss Step</label><input type="number" id="loss-step" value="2"></div>
         <div class="config-group"><label>Win Step</label><input type="number" id="win-step" value="1"></div>
         <div class="config-group">
@@ -80,11 +80,11 @@
 
     <div class="stats-bar">
         <div class="stat-card">Balance<span id="stat-balance" class="stat-val">1000</span></div>
+        <div class="stat-card">Peak Bal<span id="stat-peak" class="stat-val">1000</span></div>
         <div class="stat-card">Profit<span id="stat-profit" class="stat-val">0</span></div>
         <div class="stat-card">Multi<span id="stat-mult" class="stat-val">1</span></div>
         <div class="stat-card">Virtual L<span id="stat-trigger" class="stat-val">0</span></div>
         <div class="stat-card">Calc Dist<span id="stat-hot-dist" class="stat-val">--</span></div>
-        <div class="stat-card">Active Bets<span id="stat-active-count" class="stat-val">0</span></div>
     </div>
 
     <div class="num-grid" id="btns"><button class="n-btn g" style="grid-row: span 3;" onclick="press(0)">0</button></div>
@@ -138,6 +138,13 @@
         bg.appendChild(b);
     }
 
+    function syncBank() {
+        startBank = parseFloat(document.getElementById('start-bank').value) || 1000;
+        bankroll = startBank;
+        if(bankroll > peakBalance) peakBalance = bankroll;
+        updateUI();
+    }
+
     function toggleDistInput() {
         const mode = document.getElementById('dist-mode').value;
         document.getElementById('fixed-dist-val').disabled = (mode === 'hot');
@@ -169,58 +176,44 @@
              if(document.getElementById('play-su').checked) list.push({ label: "0", type: "Straight", nums: [0], pay: 36 });
              return list;
         }
-        
         let n = parseInt(targetNum);
         let dsIdx = Math.floor((n-1)/6);
         let stIdx = Math.floor((n-1)/3);
         let dozIdx = Math.ceil(n/12);
-
-        if(document.getElementById('play-ds').checked)
-            list.push({ label: `DS ${dsIdx+1}`, type: "D-Street", nums: Array.from({length: 6}, (_, i) => dsIdx*6+1+i), pay: 6 });
-        
-        if(document.getElementById('play-st').checked)
-            list.push({ label: `ST ${stIdx+1}`, type: "Street", nums: Array.from({length: 3}, (_, i) => stIdx*3+1+i), pay: 12 });
-        
-        if(document.getElementById('play-doz').checked)
-            list.push({ label: `DOZ ${dozIdx}`, type: "Dozen", nums: Array.from({length: 12}, (_, i) => (dozIdx-1)*12+1+i), pay: 3 });
-        
-        if(document.getElementById('play-su').checked)
-            list.push({ label: `#${n}`, type: "Straight", nums: [n], pay: 36 });
-
+        if(document.getElementById('play-ds').checked) list.push({ label: `DS ${dsIdx+1}`, type: "D-Street", nums: Array.from({length: 6}, (_, i) => dsIdx*6+1+i), pay: 6 });
+        if(document.getElementById('play-st').checked) list.push({ label: `ST ${stIdx+1}`, type: "Street", nums: Array.from({length: 3}, (_, i) => stIdx*3+1+i), pay: 12 });
+        if(document.getElementById('play-doz').checked) list.push({ label: `DOZ ${dozIdx}`, type: "Dozen", nums: Array.from({length: 12}, (_, i) => (dozIdx-1)*12+1+i), pay: 3 });
+        if(document.getElementById('play-su').checked) list.push({ label: `#${n}`, type: "Straight", nums: [n], pay: 36 });
         return list;
     }
 
     function press(val) {
         saveState();
         let unit = parseFloat(document.getElementById('base-unit').value);
-        let trigger = parseInt(document.getElementById('trigger-val').value);
+        let maxAllowedMult = parseInt(document.getElementById('max-mult').value) || 100;
+        let trigger = 0; // Trigger logic handled by betStack presence
 
         if (betStack.length > 0) {
             let totalStake = betStack.length * unit * mult;
-            let isActualBet = virtualLosses >= trigger;
+            let isActualBet = true; // Simplified: if betStack has items, we calculate impact
 
-            if (isActualBet) bankroll -= totalStake;
-
+            bankroll -= totalStake;
             let hitBet = betStack.find(b => b.nums.includes(val));
             let isWin = !!hitBet;
 
-            if (isActualBet) {
-                if (isWin) {
-                    bankroll += (unit * mult * hitBet.pay);
-                    currentLosses = 0; currentWins++;
-                    if (currentWins % parseInt(document.getElementById('win-step').value) === 0) mult = Math.max(1, mult - 1);
-                    virtualLosses = 0; 
-                    betStack = []; 
-                } else {
-                    currentWins = 0; currentLosses++;
-                    if (currentLosses % parseInt(document.getElementById('loss-step').value) === 0) mult++;
-                }
-                predictionLog.unshift({ res: val, win: isWin, cost: totalStake, type: 'ACTUAL' });
+            if (isWin) {
+                bankroll += (unit * mult * hitBet.pay);
+                currentLosses = 0; currentWins++;
+                if (currentWins % parseInt(document.getElementById('win-step').value) === 0) mult = Math.max(1, mult - 1);
             } else {
-                if (isWin) virtualLosses = 0; else virtualLosses++;
-                predictionLog.unshift({ res: val, win: isWin, cost: 0, type: 'VIRTUAL' });
-                betStack = []; 
+                currentWins = 0; currentLosses++;
+                if (currentLosses % parseInt(document.getElementById('loss-step').value) === 0) {
+                    mult = Math.min(maxAllowedMult, mult + 1); // Respect Max Multi
+                }
             }
+            
+            if(bankroll > peakBalance) peakBalance = bankroll;
+            predictionLog.unshift({ res: val, win: isWin, cost: totalStake, type: 'ACT' });
         }
 
         spins.push(val);
@@ -230,21 +223,17 @@
             const d = (wheel.indexOf(last) - wheel.indexOf(prev) + 37) % 37;
             distanceHistory.push(d);
         }
-
         updateUI();
     }
 
     function updateUI() {
         document.getElementById('stat-balance').innerText = bankroll.toFixed(0);
         document.getElementById('stat-profit').innerText = (bankroll - startBank).toFixed(0);
+        document.getElementById('stat-peak').innerText = peakBalance.toFixed(0);
         document.getElementById('stat-mult').innerText = mult;
-        document.getElementById('stat-trigger').innerText = virtualLosses;
 
         if (spins.length >= 2) {
             const lastNum = spins[spins.length-1];
-            let trigger = parseInt(document.getElementById('trigger-val').value);
-
-            // Logic to determine which distance to use
             const mode = document.getElementById('dist-mode').value;
             let activeDistance = 0;
 
@@ -259,28 +248,11 @@
             }
 
             document.getElementById('stat-hot-dist').innerText = activeDistance;
-
             let targetNum = wheel[(wheel.indexOf(lastNum) + activeDistance) % 37];
-            let newPredictions = getSelectedPredictions(targetNum);
-
-            let isBetting = virtualLosses >= trigger;
-            if (isBetting) {
-                let existingLabels = new Set(betStack.map(b => b.label));
-                newPredictions.forEach(pred => {
-                    if (!existingLabels.has(pred.label)) betStack.push(pred);
-                });
-            } else {
-                betStack = newPredictions;
-            }
-
-            document.getElementById('stat-active-count').innerText = betStack.length;
-
-            document.getElementById('trigger-status').innerHTML = isBetting ? 
-                `<span class="status-tag tag-bet">BETTING ACTIVE (ACCUMULATING)</span>` : 
-                `<span class="status-tag tag-wait">VIRTUAL WAIT (${virtualLosses}/${trigger}L)</span>`;
+            betStack = getSelectedPredictions(targetNum);
 
             document.getElementById('bet-display').innerHTML = betStack.map(g => `
-                <div class="bet-box ${isBetting ? 'active' : ''}">
+                <div class="bet-box active">
                     <span class="type">${g.type}</span>
                     <span class="label">${g.label}</span>
                 </div>
@@ -293,7 +265,7 @@
         document.getElementById('bet-history').innerHTML = predictionLog.slice(0, 5).map(l => 
             `<div style="border-bottom:1px solid #eee; padding:3px">
                 Spin ${l.res}: ${l.win?'<span style="color:var(--win)">HIT</span>':'<span style="color:var(--loss)">MISS</span>'} 
-                <small style="float:right">${l.type} ${l.cost>0?'(-'+l.cost+')':''}</small>
+                <small style="float:right">-${l.cost.toFixed(1)}</small>
             </div>`).join('');
     }
 

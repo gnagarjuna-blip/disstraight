@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIET Pro - Manual & Auto Distance Tracker</title>
+    <title>BIET Pro - 3-Distance Clockwise Tracker</title>
     <style>
         :root { 
             --bg: #f0f2f5; --dark: #1e272e; --accent: #00d2d3; 
@@ -29,11 +29,11 @@
         .main-layout { display: grid; grid-template-columns: 1fr 300px; gap: 15px; }
         .card { padding: 15px; border-radius: 12px; border: 1px solid #ddd; background: #fff; margin-bottom: 10px; }
         
-        .bet-container { display: flex; gap: 10px; margin-top: 10px; }
-        .bet-box { flex: 1; text-align: center; padding: 15px; border-radius: 8px; border: 2px solid #f1f2f6; background: #fdfdfd; }
+        .bet-container { display: flex; gap: 10px; margin-top: 10px; overflow-x: auto; padding-bottom: 5px; }
+        .bet-box { min-width: 80px; flex: 1; text-align: center; padding: 15px; border-radius: 8px; border: 2px solid #f1f2f6; background: #fdfdfd; }
         .bet-box.active { border-color: var(--win); background: #f0fff4; box-shadow: 0 4px 10px rgba(29, 209, 161, 0.2); }
-        .bet-box .label { font-weight: 800; display: block; font-size: 20px; color: #2d3436; }
-        .bet-box .stake { color: var(--win); font-weight: 900; font-size: 16px; margin-top: 5px; display: none; }
+        .bet-box .label { font-weight: 800; display: block; font-size: 16px; color: #2d3436; }
+        .bet-box .stake { color: var(--win); font-weight: 900; font-size: 14px; margin-top: 5px; display: none; }
         .bet-box.active .stake { display: block; }
 
         .status-tag { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; display: inline-block; margin-bottom: 10px; }
@@ -56,15 +56,15 @@
         <div class="config-group">
             <label>Mode</label>
             <select id="bet-mode" onchange="resetSession()">
-                <option value="dstreet">Double Streets (2L)</option>
-                <option value="street">Streets (4L)</option>
-                <option value="dozen">Dozens (1L)</option>
+                <option value="dstreet">3 Double Streets</option>
+                <option value="street">3 Streets</option>
+                <option value="dozen">3 Dozens</option>
             </select>
         </div>
         <div class="config-group">
-            <label>Dist Lock</label>
+            <label>Dist Type</label>
             <select id="dist-lock">
-                <option value="auto">Auto Dist</option>
+                <option value="auto">Auto (Latest + Top 2 Freq)</option>
             </select>
         </div>
         <div class="config-group"><label>Loss Step</label><input type="number" id="loss-step" value="2"></div>
@@ -77,7 +77,7 @@
         <div class="stat-card">Profit<span id="stat-profit" class="stat-val">0</span></div>
         <div class="stat-card">Multi<span id="stat-mult" class="stat-val">1</span></div>
         <div class="stat-card">Virtual L<span id="stat-trigger" class="stat-val">0</span></div>
-        <div class="stat-card">Cur Dist<span id="stat-dist" class="stat-val">--</span></div>
+        <div class="stat-card">Used Dists<span id="stat-dist" class="stat-val">--</span></div>
         <div class="stat-card">Spins<span id="stat-spins" class="stat-val">0</span></div>
     </div>
 
@@ -98,8 +98,8 @@
         <div class="card">
             <strong>Distance Tracker</strong><hr>
             <div class="tracker-grid">
-                <div class="scroll-list" id="dist-log"><strong>Log</strong><br></div>
-                <div class="scroll-list" id="freq-rank"><strong>Freq</strong><br></div>
+                <div class="scroll-list" id="dist-log"><strong>Log (CW)</strong><br></div>
+                <div class="scroll-list" id="freq-rank"><strong>Freq Ranking</strong><br></div>
             </div>
         </div>
     </div>
@@ -124,11 +124,6 @@
     let currentLosses = 0, currentWins = 0, virtualLosses = 0;
     let historyState = [];
 
-    // Populate Distance Dropdown (1-36)
-    const dLock = document.getElementById('dist-lock');
-    for(let i=1; i<=36; i++) dLock.add(new Option(`Fixed: ${i}`, i));
-
-    // Init Number Buttons
     const bg = document.getElementById('btns');
     for(let i=1; i<=36; i++) {
         const b = document.createElement('button');
@@ -210,6 +205,7 @@
         if (spins.length >= 2) {
             const last = spins[spins.length-1];
             const prev = spins[spins.length-2];
+            // Clockwise distance only
             const d = (wheel.indexOf(last) - wheel.indexOf(prev) + 37) % 37;
             distanceHistory.push(d);
         }
@@ -227,21 +223,39 @@
         document.getElementById('stat-spins').innerText = spins.length;
 
         if (spins.length >= 2) {
-            const last = spins[spins.length-1];
-            const prev = spins[spins.length-2];
-            const lastDist = (wheel.indexOf(last) - wheel.indexOf(prev) + 37) % 37;
+            const lastNum = spins[spins.length-1];
+            const latestDist = distanceHistory[distanceHistory.length - 1];
             
-            const lockVal = document.getElementById('dist-lock').value;
-            const useD = lockVal === 'auto' ? lastDist : parseInt(lockVal);
-            document.getElementById('stat-dist').innerText = useD;
+            // Calculate Frequencies
+            let fMap = {};
+            distanceHistory.forEach(d => fMap[d] = (fMap[d] || 0) + 1);
+            let sortedFreqs = Object.entries(fMap).sort((a,b) => b[1]-a[1]);
+            
+            // Get Top 2 Frequent (excluding latest if it's already top)
+            let topDists = sortedFreqs.slice(0, 3).map(x => parseInt(x[0]));
+            
+            // Logic: 1st is Latest, Next 2 are top frequencies
+            let finalDists = [latestDist];
+            for(let f of sortedFreqs) {
+                let dVal = parseInt(f[0]);
+                if(!finalDists.includes(dVal)) finalDists.push(dVal);
+                if(finalDists.length >= 3) break;
+            }
+
+            document.getElementById('stat-dist').innerText = finalDists.join(', ');
 
             const mode = document.getElementById('bet-mode').value;
             const unit = parseFloat(document.getElementById('base-unit').value);
             const trigger = mode === 'street' ? 4 : mode === 'dstreet' ? 2 : 1;
             
-            const g1 = getGroupData(wheel[(wheel.indexOf(last) + useD) % 37], mode);
-            const g2 = getGroupData(wheel[(wheel.indexOf(last) - useD + 37) % 37], mode);
-            betStack = [g1, g2];
+            // Create Bet Stack: Clockwise move only for all 3 distances
+            betStack = finalDists.map(d => {
+                let targetIdx = (wheel.indexOf(lastNum) + d) % 37;
+                return getGroupData(wheel[targetIdx], mode);
+            });
+
+            // Remove duplicates (in case different distances land in same DS)
+            betStack = Array.from(new Set(betStack.map(JSON.stringify))).map(JSON.parse);
 
             let isBetting = virtualLosses >= trigger;
             document.getElementById('trigger-status').innerHTML = isBetting ? 
@@ -255,12 +269,8 @@
                 </div>
             `).join('');
 
-            // Log & Freq
-            document.getElementById('dist-log').innerHTML = `<strong>Log</strong><br>` + distanceHistory.slice(-20).reverse().map(d => `<div>Dist: <b>${d}</b></div>`).join('');
-            let fMap = {};
-            distanceHistory.forEach(d => fMap[d] = (fMap[d] || 0) + 1);
-            let sorted = Object.entries(fMap).sort((a,b) => b[1]-a[1]);
-            document.getElementById('freq-rank').innerHTML = `<strong>Freq</strong><br>` + sorted.slice(0, 10).map(x => `<div>D${x[0]}: ${x[1]}x</div>`).join('');
+            document.getElementById('dist-log').innerHTML = `<strong>Log (CW)</strong><br>` + distanceHistory.slice(-20).reverse().map(d => `<div>Dist: <b>${d}</b></div>`).join('');
+            document.getElementById('freq-rank').innerHTML = `<strong>Freq Ranking</strong><br>` + sortedFreqs.slice(0, 10).map(x => `<div>D${x[0]}: ${x[1]}x</div>`).join('');
         }
 
         document.getElementById('bet-history').innerHTML = predictionLog.slice(0, 5).map(l => 

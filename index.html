@@ -32,7 +32,6 @@
         .main-layout { display: grid; grid-template-columns: 1fr 320px; gap: 15px; }
         .card { padding: 15px; border-radius: 12px; border: 1px solid #ddd; background: #fff; margin-bottom: 10px; }
         
-        /* Individual Bet Card Styling */
         .bet-display-area { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 10px; }
         .bet-individual-card { 
             background: #fff; border: 1px solid #e0e0e0; border-left: 4px solid var(--accent);
@@ -82,11 +81,11 @@
 
     <div class="stats-bar">
         <div class="stat-card">Balance<span id="stat-balance" class="stat-val">1000</span></div>
-        <div class="stat-card">Peak Balance<span id="stat-peak" class="stat-val">1000</span></div>
+        <div class="stat-card">Peak<span id="stat-peak" class="stat-val">1000</span></div>
         <div class="stat-card">Profit<span id="stat-profit" class="stat-val">0</span></div>
-        <div class="stat-card">Multiplier<span id="stat-mult" class="stat-val">1</span></div>
-        <div class="stat-card">Calc Dist<span id="stat-hot-dist" class="stat-val">--</span></div>
-        <div class="stat-card">Total Stack<span id="stat-active-count" class="stat-val">0</span></div>
+        <div class="stat-card">Mult<span id="stat-mult" class="stat-val">1</span></div>
+        <div class="stat-card">Dist<span id="stat-hot-dist" class="stat-val">--</span></div>
+        <div class="stat-card">Active<span id="stat-active-count" class="stat-val">0</span></div>
     </div>
 
     <div class="num-grid" id="btns"><button class="n-btn g" style="grid-row: span 3;" onclick="press(0)">0</button></div>
@@ -94,7 +93,7 @@
     <div class="main-layout">
         <div>
             <div class="card">
-                <strong>Current Active Bets</strong> (Accumulating until Win)
+                <strong>Next Predictions</strong> (Accumulating)
                 <div id="bet-display" class="bet-display-area"></div>
             </div>
             <div class="card">
@@ -106,15 +105,15 @@
         <div class="card">
             <strong>Clockwise Tracker</strong><hr>
             <div class="tracker-grid">
-                <div class="scroll-list" id="dist-log"><strong>Latest CW Dists</strong><br></div>
-                <div class="scroll-list" id="freq-rank"><strong>Freq Ranking</strong><br></div>
+                <div class="scroll-list" id="dist-log"><strong>Latest Dists</strong><br></div>
+                <div class="scroll-list" id="freq-rank"><strong>Freq Rank</strong><br></div>
             </div>
         </div>
     </div>
 
     <div class="card" style="background:#f8f9fa">
         <strong>Bulk Simulation</strong>
-        <textarea id="bulk-input" placeholder="Enter numbers separated by space or comma (e.g., 32, 15, 19)"></textarea>
+        <textarea id="bulk-input" placeholder="32, 15, 19..."></textarea>
         <div class="btn-row">
             <button class="btn" style="background:var(--ready)" onclick="runBulk()">SIMULATE ALL</button>
             <button class="btn" style="background:#636e72" onclick="undoLast()">UNDO</button>
@@ -132,7 +131,6 @@
     let currentLosses = 0, currentWins = 0;
     let historyState = [];
 
-    // Initialize UI Buttons
     const bg = document.getElementById('btns');
     for(let i=1; i<=36; i++) {
         const b = document.createElement('button');
@@ -143,9 +141,7 @@
 
     function syncBank() {
         startBank = parseFloat(document.getElementById('start-bank').value) || 0;
-        bankroll = startBank;
-        if(bankroll > peakBalance) peakBalance = bankroll;
-        updateUI();
+        bankroll = startBank; updateUI();
     }
 
     function toggleDistInput() {
@@ -196,7 +192,7 @@
         let unit = parseFloat(document.getElementById('base-unit').value);
         let maxAllowedMult = parseInt(document.getElementById('max-mult').value);
 
-        // 1. Resolve Active Accumulation
+        // 1. Check Win/Loss on previous stack
         if (betStack.length > 0) {
             let totalStake = betStack.length * unit * mult;
             bankroll -= totalStake;
@@ -209,25 +205,53 @@
                 currentLosses = 0;
                 currentWins++;
                 if (currentWins % parseInt(document.getElementById('win-step').value) === 0) mult = Math.max(1, mult - 1);
-                betStack = []; // Clear stack on WIN
+                betStack = []; 
             } else {
                 currentWins = 0;
                 currentLosses++;
-                if (currentLosses % parseInt(document.getElementById('loss-step').value) === 0) {
-                    mult = Math.min(maxAllowedMult, mult + 1);
-                }
+                if (currentLosses % parseInt(document.getElementById('loss-step').value) === 0) mult = Math.min(maxAllowedMult, mult + 1);
             }
             if(bankroll > peakBalance) peakBalance = bankroll;
             predictionLog.unshift({ res: val, win: isWin, cost: totalStake });
         }
 
-        // 2. Track Data
+        // 2. Track Wheel Distance
         spins.push(val);
         if (spins.length >= 2) {
             const last = spins[spins.length-1];
             const prev = spins[spins.length-2];
             const d = (wheel.indexOf(last) - wheel.indexOf(prev) + 37) % 37;
             distanceHistory.push(d);
+        }
+
+        // 3. CALCULATE NEXT BETS IMMEDIATELY
+        if (spins.length >= 1) {
+            const lastNum = val;
+            const mode = document.getElementById('dist-mode').value;
+            
+            // Frequency Analysis
+            let fMap = {};
+            distanceHistory.forEach(d => fMap[d] = (fMap[d] || 0) + 1);
+            let sortedFreqs = Object.entries(fMap).sort((a,b) => b[1]-a[1]);
+            
+            // Determine the Distance to use
+            let activeDistance = 0;
+            if(mode === 'hot' && sortedFreqs.length > 0) {
+                activeDistance = parseInt(sortedFreqs[0][0]);
+            } else {
+                activeDistance = parseInt(document.getElementById('fixed-dist-val').value) || 0;
+            }
+
+            // Find Target and Add to Stack
+            let targetIdx = (wheel.indexOf(lastNum) + activeDistance) % 37;
+            let targetNum = wheel[targetIdx];
+            let newBatch = getSelectedPredictions(targetNum);
+            
+            newBatch.forEach(nb => {
+                if(!betStack.some(ob => ob.label === nb.label)) {
+                    betStack.push(nb);
+                }
+            });
         }
 
         updateUI();
@@ -238,47 +262,30 @@
         document.getElementById('stat-profit').innerText = (bankroll - startBank).toFixed(0);
         document.getElementById('stat-peak').innerText = peakBalance.toFixed(0);
         document.getElementById('stat-mult').innerText = mult;
+        document.getElementById('stat-active-count').innerText = betStack.length;
 
-        if (spins.length >= 2) {
-            const lastNum = spins[spins.length-1];
-            const mode = document.getElementById('dist-mode').value;
-            
-            // Calc Frequencies
-            let fMap = {};
-            distanceHistory.forEach(d => fMap[d] = (fMap[d] || 0) + 1);
-            let sortedFreqs = Object.entries(fMap).sort((a,b) => b[1]-a[1]);
-            
-            let activeDistance = (mode === 'hot' && sortedFreqs.length > 0) ? 
-                                 parseInt(sortedFreqs[0][0]) : 
-                                 parseInt(document.getElementById('fixed-dist-val').value) || 0;
+        // Display current target distance
+        let fMap = {};
+        distanceHistory.forEach(d => fMap[d] = (fMap[d] || 0) + 1);
+        let sortedFreqs = Object.entries(fMap).sort((a,b) => b[1]-a[1]);
+        const mode = document.getElementById('dist-mode').value;
+        let activeDistDisplay = (mode === 'hot' && sortedFreqs.length > 0) ? sortedFreqs[0][0] : document.getElementById('fixed-dist-val').value;
+        document.getElementById('stat-hot-dist').innerText = activeDistDisplay;
 
-            document.getElementById('stat-hot-dist').innerText = activeDistance;
+        // Render Active Predictions
+        document.getElementById('bet-display').innerHTML = betStack.map(g => `
+            <div class="bet-individual-card">
+                <div class="bet-info">${g.type}</div>
+                <div class="bet-label">${g.label}</div>
+                <div class="bet-nums">Units: ${mult}</div>
+            </div>
+        `).join('');
 
-            // 3. Accumulate: Add new predictions to the stack
-            let targetNum = wheel[(wheel.indexOf(lastNum) + activeDistance) % 37];
-            let newBatch = getSelectedPredictions(targetNum);
-            
-            newBatch.forEach(nb => {
-                if(!betStack.some(ob => ob.label === nb.label)) {
-                    betStack.push(nb);
-                }
-            });
+        // Update Tracker Lists
+        document.getElementById('dist-log').innerHTML = `<strong>Latest Dists</strong><br>` + distanceHistory.slice(-10).reverse().map(d => `<div>${d}</div>`).join('');
+        document.getElementById('freq-rank').innerHTML = `<strong>Freq Rank</strong><br>` + sortedFreqs.slice(0, 10).map(x => `<div>D${x[0]}: ${x[1]}x</div>`).join('');
 
-            document.getElementById('stat-active-count').innerText = betStack.length;
-
-            // Render Individual Cards
-            document.getElementById('bet-display').innerHTML = betStack.map(g => `
-                <div class="bet-individual-card">
-                    <div class="bet-info">${g.type}</div>
-                    <div class="bet-label">${g.label}</div>
-                    <div class="bet-nums">Units: ${mult}</div>
-                </div>
-            `).join('');
-
-            document.getElementById('dist-log').innerHTML = `<strong>Latest CW Dists</strong><br>` + distanceHistory.slice(-10).reverse().map(d => `<div>${d}</div>`).join('');
-            document.getElementById('freq-rank').innerHTML = `<strong>Freq Ranking</strong><br>` + sortedFreqs.slice(0, 10).map(x => `<div>D${x[0]}: ${x[1]}x</div>`).join('');
-        }
-
+        // Update History
         document.getElementById('bet-history').innerHTML = predictionLog.slice(0, 5).map(l => 
             `<div style="border-bottom:1px solid #eee; padding:3px">
                 Spin ${l.res}: ${l.win?'<span style="color:var(--win); font-weight:bold">HIT</span>':'<span style="color:var(--loss)">MISS</span>'} 
@@ -290,6 +297,7 @@
         const input = document.getElementById('bulk-input').value;
         const numbers = input.split(/[,\s\n]+/).filter(x => x !== "").map(Number);
         numbers.forEach(n => press(n));
+        document.getElementById('bulk-input').value = "";
     }
 
     resetSession();

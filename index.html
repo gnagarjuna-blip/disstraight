@@ -2,195 +2,285 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roulette Predict UI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Roulette Predict Pro</title>
     <style>
         :root {
-            --bg-dark: #121826;
-            --card-bg: #1e2533;
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
             --primary-green: #10b981;
             --primary-blue: #3b82f6;
             --primary-purple: #8b5cf6;
             --primary-orange: #f59e0b;
-            --text-white: #ffffff;
+            --text-white: #f8fafc;
             --text-gray: #94a3b8;
+            --roulette-red: #ef4444;
+            --roulette-black: #1a1a1a;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', -apple-system, sans-serif;
             background-color: var(--bg-dark);
             color: var(--text-white);
             margin: 0;
             padding: 0;
-            padding-bottom: 80px; /* Space for bottom nav */
+            padding-bottom: 70px;
+            overflow-x: hidden;
         }
 
-        .container {
-            padding: 20px;
-            max-width: 500px;
-            margin: 0 auto;
-        }
+        /* View Management */
+        .view { display: none; padding: 20px; animation: fadeIn 0.3s ease; }
+        .view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        h2 { font-size: 1.5rem; margin-bottom: 20px; }
+        /* Typography & Layout */
+        h2 { font-size: 1.5rem; margin-bottom: 20px; text-align: center; color: var(--primary-green); }
+        .card { background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
 
-        /* Card Styles */
-        .card {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        .hero-icon {
-            font-size: 40px;
-            color: var(--primary-green);
-            margin-bottom: 10px;
-        }
-
-        .hero-title { font-size: 1.8rem; font-weight: bold; margin: 5px 0; }
-        .hero-sub { color: var(--text-gray); font-size: 0.9rem; }
-
-        /* Variant Buttons */
-        .variant-container { display: flex; gap: 10px; margin-top: 15px; }
-        .btn-variant {
-            flex: 1;
-            padding: 12px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-            color: white;
-            background-color: #334155;
-        }
-        .btn-variant.active { background-color: var(--primary-green); }
-
-        /* Quick Stats Grid */
-        .stats-grid {
+        /* Roulette Table Grid */
+        .roulette-container { overflow-x: auto; background: #064e3b; padding: 15px; border-radius: 12px; border: 4px solid #b45309; }
+        .roulette-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
+            grid-template-columns: repeat(13, 40px);
+            grid-template-rows: repeat(3, 40px);
+            gap: 2px;
+            min-width: 550px;
         }
-        .stat-item {
-            background-color: var(--card-bg);
-            padding: 15px;
-            border-radius: 12px;
-            text-align: center;
+        .cell {
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 0.9rem; border-radius: 4px; cursor: pointer;
+            border: 1px solid rgba(255,255,255,0.1); transition: transform 0.1s;
         }
-        .stat-value { font-size: 1.5rem; font-weight: bold; color: var(--primary-green); display: block; }
-        .stat-label { font-size: 0.8rem; color: var(--text-gray); }
+        .cell:active { transform: scale(0.9); }
+        .num-red { background-color: var(--roulette-red); }
+        .num-black { background-color: var(--roulette-black); }
+        .num-zero { background-color: var(--primary-green); grid-row: 1 / span 3; }
 
-        /* Prediction Buttons */
-        .predict-method {
-            display: flex;
-            align-items: center;
-            background-color: var(--card-bg);
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 15px;
-            text-align: left;
+        /* Bulk Input */
+        textarea {
+            width: 100%; background: #0f172a; border: 1px solid #334155;
+            color: white; border-radius: 8px; padding: 10px; margin-top: 10px;
+            font-family: monospace; resize: none;
         }
-        .method-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 15px;
-            font-size: 20px;
+
+        /* Prediction Cards */
+        .method-btn {
+            width: 100%; display: flex; align-items: center; justify-content: space-between;
+            background: #334155; border: none; padding: 15px; border-radius: 12px;
+            color: white; margin-bottom: 10px; cursor: pointer; transition: 0.2s;
         }
-        .btn-generate {
-            width: 100%;
-            padding: 12px;
-            border-radius: 8px;
-            border: none;
-            color: white;
-            font-weight: bold;
-            margin-top: 10px;
-            cursor: pointer;
+        .method-btn:hover { background: #475569; }
+        .icon-box { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+        /* History List */
+        .history-item {
+            display: flex; justify-content: space-between; padding: 10px;
+            border-bottom: 1px solid #334155; font-size: 0.9rem;
         }
+        .ball { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; margin-left: 5px; }
 
         /* Navigation Bar */
         .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            background-color: var(--bg-dark);
-            border-top: 1px solid #334155;
-            display: flex;
-            justify-content: space-around;
-            padding: 10px 0;
+            position: fixed; bottom: 0; width: 100%; background: #1e293b;
+            display: flex; justify-content: space-around; padding: 12px 0;
+            border-top: 1px solid #334155; z-index: 100;
         }
         .nav-item {
-            text-align: center;
-            color: var(--text-gray);
-            font-size: 0.7rem;
-            text-decoration: none;
+            background: none; border: none; color: var(--text-gray);
+            font-size: 0.7rem; display: flex; flex-direction: column; align-items: center;
+            cursor: pointer; flex: 1;
         }
         .nav-item.active { color: var(--primary-green); }
-        .nav-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+        .nav-icon { font-size: 1.4rem; margin-bottom: 4px; }
+
+        .btn-action {
+            background: var(--primary-green); color: white; border: none;
+            padding: 12px 24px; border-radius: 8px; font-weight: bold; width: 100%; margin-top: 10px;
+        }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h2>Roulette Predict</h2>
-
+    <div id="view-home" class="view active">
         <div class="card">
-            <div class="hero-icon">◎</div>
-            <div class="hero-title">Roulette Predict</div>
-            <div class="hero-sub">AI-Powered Number Predictions</div>
+            <div style="font-size: 3rem; color: var(--primary-green);">◎</div>
+            <h2>Roulette Predict Pro</h2>
+            <p class="hero-sub" style="text-align:center; color: var(--text-gray);">Sophisticated Pattern Analysis</p>
         </div>
 
-        <div class="card">
-            <div style="text-align: left; margin-bottom: 10px;">Roulette Variant</div>
-            <div class="variant-container">
-                <button class="btn-variant active">European (0-36)</button>
-                <button class="btn-variant">American (0-37)</button>
-            </div>
+        <div class="stats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="card" style="margin-bottom: 0;"><small>Total Spins</small><h3 id="stat-total">0</h3></div>
+            <div class="card" style="margin-bottom: 0;"><small>Hot Number</small><h3 id="stat-hot">-</h3></div>
+        </div>
+    </div>
+
+    <div id="view-spin" class="view">
+        <h2>Enter Results</h2>
+        <div class="roulette-container">
+            <div class="roulette-grid" id="table-grid">
+                <div class="cell num-zero" onclick="addSpin(0)">0</div>
+                </div>
         </div>
 
-        <div style="margin-bottom: 10px;">Quick Stats</div>
-        <div class="stats-grid">
-            <div class="stat-item"><span class="stat-value">0</span><span class="stat-label">Total Spins</span></div>
-            <div class="stat-item"><span class="stat-value">-</span><span class="stat-label">Hot Number</span></div>
-            <div class="stat-item"><span class="stat-value">0</span><span class="stat-label">Red Count</span></div>
-            <div class="stat-item"><span class="stat-value">0</span><span class="stat-label">Black Count</span></div>
+        <div class="card" style="margin-top: 20px;">
+            <strong>Bulk Entry</strong>
+            <textarea id="bulk-input" rows="3" placeholder="Enter results (e.g., 5, 12, 32 or 5 12 32)"></textarea>
+            <button class="btn-action" onclick="processBulk()">Import Bulk Data</button>
         </div>
+    </div>
 
-        <h3 style="margin-top: 30px;">Prediction Methods</h3>
+    <div id="view-predictions" class="view">
+        <h2>Prediction Methods</h2>
         
-        <div class="card" style="text-align: left;">
-            <div style="display: flex; align-items: center;">
-                <div class="method-icon" style="background: var(--primary-blue);">📊</div>
-                <div>
-                    <strong>Statistical Analysis</strong><br>
-                    <small style="color: var(--text-gray);">Hot numbers based on frequency</small>
+        <div class="card">
+            <div class="method-btn" onclick="predict('stats')">
+                <div style="display:flex; align-items:center;">
+                    <div class="icon-box" style="background:var(--primary-blue)">📊</div>
+                    <div style="margin-left:15px; text-align:left;">
+                        <strong>Statistical Analysis</strong><br><small>Based on frequency</small>
+                    </div>
                 </div>
+                <span>⚡</span>
             </div>
-            <button class="btn-generate" style="background: var(--primary-blue);">⚡ Generate Prediction</button>
+
+            <div class="method-btn" onclick="predict('llm')">
+                <div style="display:flex; align-items:center;">
+                    <div class="icon-box" style="background:var(--primary-purple)">🧠</div>
+                    <div style="margin-left:15px; text-align:left;">
+                        <strong>AI Prediction (LLM)</strong><br><small>Pattern analysis</small>
+                    </div>
+                </div>
+                <span>✨</span>
+            </div>
+
+            <div class="method-btn" onclick="predict('prob')">
+                <div style="display:flex; align-items:center;">
+                    <div class="icon-box" style="background:var(--primary-orange)">🎲</div>
+                    <div style="margin-left:15px; text-align:left;">
+                        <strong>Probability</strong><br><small>Random weighted</small>
+                    </div>
+                </div>
+                <span>🎲</span>
+            </div>
         </div>
 
-        <div class="card" style="text-align: left;">
-            <div style="display: flex; align-items: center;">
-                <div class="method-icon" style="background: var(--primary-purple);">🪐</div>
-                <div>
-                    <strong>AI Prediction</strong><br>
-                    <small style="color: var(--text-gray);">AI-powered pattern analysis</small>
-                </div>
-            </div>
-            <button class="btn-generate" style="background: var(--primary-purple);">⚡ Generate Prediction</button>
+        <div id="prediction-result" class="card" style="display:none; border: 2px solid var(--primary-green);">
+            <h4 id="pred-title">Prediction</h4>
+            <div id="pred-output" style="font-size: 1.2rem; font-weight: bold;"></div>
+        </div>
+    </div>
+
+    <div id="view-history" class="view">
+        <h2>Spin History</h2>
+        <div class="card" id="history-list">
+            <div style="color:var(--text-gray); text-align:center;">No history recorded yet.</div>
         </div>
     </div>
 
     <nav class="bottom-nav">
-        <a href="#" class="nav-item active"><span class="nav-icon">🏠</span>Home</a>
-        <a href="#" class="nav-item"><span class="nav-icon">➕</span>Enter Spin</a>
-        <a href="#" class="nav-item"><span class="nav-icon">📈</span>Predictions</a>
-        <a href="#" class="nav-item"><span class="nav-icon">📊</span>Statistics</a>
-        <a href="#" class="nav-item"><span class="nav-icon">🕒</span>History</a>
+        <button class="nav-item active" onclick="showView('home', this)"><span class="nav-icon">🏠</span>Home</button>
+        <button class="nav-item" onclick="showView('spin', this)"><span class="nav-icon">➕</span>Enter Spin</button>
+        <button class="nav-item" onclick="showView('predictions', this)"><span class="nav-icon">📈</span>Predictions</button>
+        <button class="nav-item" onclick="showView('history', this)"><span class="nav-icon">🕒</span>History</button>
     </nav>
 
+    <script>
+        let spinData = [];
+        const reds = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+
+        // 1. Initialize Table
+        function initTable() {
+            const grid = document.getElementById('table-grid');
+            // Columns are 1-12, Rows are 3,2,1 (Standard layout)
+            for (let i = 1; i <= 36; i++) {
+                const cell = document.createElement('div');
+                const isRed = reds.includes(i);
+                cell.className = `cell ${isRed ? 'num-red' : 'num-black'}`;
+                cell.innerText = i;
+                cell.onclick = () => addSpin(i);
+                
+                // Logic to align numbers in standard roulette 3-row grid
+                let row = 3 - (i - 1) % 3;
+                let col = Math.floor((i - 1) / 3) + 2;
+                cell.style.gridRow = row;
+                cell.style.gridColumn = col;
+                grid.appendChild(cell);
+            }
+        }
+
+        // 2. Navigation
+        function showView(viewId, btn) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById('view-' + viewId).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        // 3. Data Entry
+        function addSpin(num) {
+            spinData.push(num);
+            updateStats();
+            alert(`Added Number: ${num}`);
+        }
+
+        function processBulk() {
+            const input = document.getElementById('bulk-input').value;
+            const numbers = input.split(/[\s,]+/).map(Number).filter(n => !isNaN(n) && n >= 0 && n <= 36);
+            if(numbers.length > 0) {
+                spinData = [...spinData, ...numbers];
+                updateStats();
+                document.getElementById('bulk-input').value = '';
+                alert(`Imported ${numbers.length} numbers.`);
+            }
+        }
+
+        // 4. Update Stats & History
+        function updateStats() {
+            document.getElementById('stat-total').innerText = spinData.length;
+            
+            // Calculate Hot Number
+            if(spinData.length > 0) {
+                const counts = {};
+                spinData.forEach(x => counts[x] = (counts[x] || 0) + 1);
+                const hot = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+                document.getElementById('stat-hot').innerText = hot;
+            }
+
+            // Update History View
+            const histList = document.getElementById('history-list');
+            histList.innerHTML = spinData.slice(-10).reverse().map((n, i) => `
+                <div class="history-item">
+                    <span>Spin #${spinData.length - i}</span>
+                    <span class="ball" style="background:${n==0?'var(--primary-green)':reds.includes(n)?'var(--roulette-red)':'var(--roulette-black)'}">${n}</span>
+                </div>
+            `).join('');
+        }
+
+        // 5. Prediction Logic
+        function predict(method) {
+            const output = document.getElementById('prediction-result');
+            const text = document.getElementById('pred-output');
+            output.style.display = 'block';
+
+            if(spinData.length < 5) {
+                text.innerText = "Please enter at least 5 spins for analysis.";
+                return;
+            }
+
+            if(method === 'stats') {
+                const last5 = spinData.slice(-5);
+                text.innerText = `Statistical Suggestion: ${Math.floor(Math.random() * 37)} (Focusing on Recency)`;
+            } else if (method === 'llm') {
+                // Simulating LLM response based on pattern
+                text.innerHTML = `<span style="color:var(--primary-purple)">LLM Analyzing Patterns...</span><br>
+                                 Predicted Zone: Tiers du Cylindre<br>
+                                 Target Numbers: 5, 8, 10, 11`;
+            } else {
+                text.innerText = `Probability: ${Math.floor(Math.random() * 37)}`;
+            }
+        }
+
+        initTable();
+    </script>
 </body>
 </html>

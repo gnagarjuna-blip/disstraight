@@ -3,254 +3,194 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIET Pro - Dual Distance Tracker</title>
+    <title>Roulette Predict UI</title>
     <style>
-        :root { 
-            --bg: #f0f2f5; --dark: #1e272e; --accent: #00d2d3; 
-            --win: #1dd1a1; --loss: #ff6b6b; --ready: #0984e3;
+        :root {
+            --bg-dark: #121826;
+            --card-bg: #1e2533;
+            --primary-green: #10b981;
+            --primary-blue: #3b82f6;
+            --primary-purple: #8b5cf6;
+            --primary-orange: #f59e0b;
+            --text-white: #ffffff;
+            --text-gray: #94a3b8;
         }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 1150px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        
-        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px; background: #dfe6e9; padding: 12px; border-radius: 10px; }
-        .config-group { display: flex; flex-direction: column; }
-        .config-group label { font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; color: #4b6584; }
-        .config-group input { padding: 6px; border-radius: 4px; border: 1px solid #b2bec3; font-weight: bold; font-size: 12px; }
 
-        .market-selector { display: flex; gap: 15px; background: #f8f9fa; padding: 10px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #ddd; }
-        .market-option { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: bold; cursor: pointer; }
-
-        .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 15px; }
-        .stat-card { background: var(--dark); color: white; padding: 10px; border-radius: 8px; text-align: center; border-bottom: 3px solid var(--accent); }
-        .stat-val { font-size: 14px; font-weight: bold; display: block; color: var(--accent); }
-
-        .num-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 4px; margin-bottom: 15px; }
-        .n-btn { padding: 12px 0; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .n-btn:hover { opacity: 0.8; transform: scale(0.95); }
-        .r { background: #e84118; } .b { background: #2f3640; } .g { background: #44bd32; }
-
-        .main-layout { display: grid; grid-template-columns: 1fr 320px; gap: 15px; }
-        .card { padding: 15px; border-radius: 12px; border: 1px solid #ddd; background: #fff; margin-bottom: 10px; }
-        
-        .bet-display-area { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-top: 10px; }
-        .bet-individual-card { 
-            background: #fff; border: 1px solid #e0e0e0; border-left: 4px solid var(--ready);
-            border-radius: 8px; padding: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-white);
+            margin: 0;
+            padding: 0;
+            padding-bottom: 80px; /* Space for bottom nav */
         }
-        .bet-label { font-size: 16px; font-weight: 900; color: #2d3436; }
-        .bet-info { font-size: 10px; color: #636e72; text-transform: uppercase; }
 
-        .tracker-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 220px; }
-        .scroll-list { overflow-y: auto; font-size: 11px; border: 1px solid #f1f2f6; border-radius: 5px; padding: 5px; }
+        .container {
+            padding: 20px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
 
-        textarea { width: 100%; height: 60px; padding: 10px; border-radius: 5px; margin-top: 10px; border: 1px solid #ddd; }
-        .btn-row { display: flex; gap: 10px; margin-top: 10px; }
-        .btn { padding: 10px; border: none; border-radius: 5px; cursor: pointer; color: white; font-weight: bold; flex: 1; }
+        h2 { font-size: 1.5rem; margin-bottom: 20px; }
+
+        /* Card Styles */
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .hero-icon {
+            font-size: 40px;
+            color: var(--primary-green);
+            margin-bottom: 10px;
+        }
+
+        .hero-title { font-size: 1.8rem; font-weight: bold; margin: 5px 0; }
+        .hero-sub { color: var(--text-gray); font-size: 0.9rem; }
+
+        /* Variant Buttons */
+        .variant-container { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-variant {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            background-color: #334155;
+        }
+        .btn-variant.active { background-color: var(--primary-green); }
+
+        /* Quick Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .stat-item {
+            background-color: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: var(--primary-green); display: block; }
+        .stat-label { font-size: 0.8rem; color: var(--text-gray); }
+
+        /* Prediction Buttons */
+        .predict-method {
+            display: flex;
+            align-items: center;
+            background-color: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        .method-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 20px;
+        }
+        .btn-generate {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            color: white;
+            font-weight: bold;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        /* Navigation Bar */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: var(--bg-dark);
+            border-top: 1px solid #334155;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+        }
+        .nav-item {
+            text-align: center;
+            color: var(--text-gray);
+            font-size: 0.7rem;
+            text-decoration: none;
+        }
+        .nav-item.active { color: var(--primary-green); }
+        .nav-icon { font-size: 20px; display: block; margin-bottom: 4px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="config-grid">
-        <div class="config-group"><label>Bankroll</label><input type="number" id="start-bank" value="1000" onchange="syncBank()"></div>
-        <div class="config-group"><label>Base Unit</label><input type="number" id="base-unit" value="1"></div>
-        <div class="config-group"><label>Progression</label><input type="number" id="prog-step" value="1" title="Increase multi after X losses"></div>
-    </div>
+    <div class="container">
+        <h2>Roulette Predict</h2>
 
-    <div class="market-selector">
-        <label class="market-option"><input type="checkbox" id="play-ds" checked> 2 D-Streets</label>
-        <label class="market-option"><input type="checkbox" id="play-st" checked> 2 Streets</label>
-        <label class="market-option"><input type="checkbox" id="play-doz" checked> 2 Dozens</label>
-    </div>
-
-    <div class="stats-bar">
-        <div class="stat-card">Balance<span id="stat-balance" class="stat-val">1000</span></div>
-        <div class="stat-card">Profit<span id="stat-profit" class="stat-val">0</span></div>
-        <div class="stat-card">Hot Dists<span id="stat-hots" class="stat-val">Waiting...</span></div>
-        <div class="stat-card">Status<span id="stat-status" class="stat-val">Scanning</span></div>
-    </div>
-
-    <div class="num-grid" id="btns"><button class="n-btn g" style="grid-row: span 3;" onclick="press(0)">0</button></div>
-
-    <div class="main-layout">
-        <div>
-            <div class="card">
-                <strong>Next Predicted Bets</strong> (Fresh every spin)
-                <div id="bet-display" class="bet-display-area"></div>
-            </div>
-            <div class="card">
-                <strong>History</strong><hr>
-                <div id="bet-history" style="font-size: 11px;"></div>
-            </div>
+        <div class="card">
+            <div class="hero-icon">◎</div>
+            <div class="hero-title">Roulette Predict</div>
+            <div class="hero-sub">AI-Powered Number Predictions</div>
         </div>
 
         <div class="card">
-            <strong>Clockwise Tracker</strong><hr>
-            <div class="tracker-grid">
-                <div class="scroll-list" id="dist-log"><strong>Latest Dists</strong><br></div>
-                <div class="scroll-list" id="freq-rank"><strong>Freq Ranking</strong><br></div>
+            <div style="text-align: left; margin-bottom: 10px;">Roulette Variant</div>
+            <div class="variant-container">
+                <button class="btn-variant active">European (0-36)</button>
+                <button class="btn-variant">American (0-37)</button>
             </div>
         </div>
-    </div>
 
-    <div class="card" style="background:#f8f9fa">
-        <strong>Bulk Simulation</strong>
-        <textarea id="bulk-input" placeholder="Enter sequence: 32, 15, 19..."></textarea>
-        <div class="btn-row">
-            <button class="btn" style="background:var(--ready)" onclick="runBulk()">PROCESS ALL</button>
-            <button class="btn" style="background:#d63031" onclick="resetSession()">RESET</button>
+        <div style="margin-bottom: 10px;">Quick Stats</div>
+        <div class="stats-grid">
+            <div class="stat-item"><span class="stat-value">0</span><span class="stat-label">Total Spins</span></div>
+            <div class="stat-item"><span class="stat-value">-</span><span class="stat-label">Hot Number</span></div>
+            <div class="stat-item"><span class="stat-value">0</span><span class="stat-label">Red Count</span></div>
+            <div class="stat-item"><span class="stat-value">0</span><span class="stat-label">Black Count</span></div>
+        </div>
+
+        <h3 style="margin-top: 30px;">Prediction Methods</h3>
+        
+        <div class="card" style="text-align: left;">
+            <div style="display: flex; align-items: center;">
+                <div class="method-icon" style="background: var(--primary-blue);">📊</div>
+                <div>
+                    <strong>Statistical Analysis</strong><br>
+                    <small style="color: var(--text-gray);">Hot numbers based on frequency</small>
+                </div>
+            </div>
+            <button class="btn-generate" style="background: var(--primary-blue);">⚡ Generate Prediction</button>
+        </div>
+
+        <div class="card" style="text-align: left;">
+            <div style="display: flex; align-items: center;">
+                <div class="method-icon" style="background: var(--primary-purple);">🪐</div>
+                <div>
+                    <strong>AI Prediction</strong><br>
+                    <small style="color: var(--text-gray);">AI-powered pattern analysis</small>
+                </div>
+            </div>
+            <button class="btn-generate" style="background: var(--primary-purple);">⚡ Generate Prediction</button>
         </div>
     </div>
-</div>
 
-<script>
-    const wheel = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
-    const reds = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
-    
-    let spins = [], distanceHistory = [], predictionLog = [], currentBets = [];
-    let bankroll = 1000, startBank = 1000, mult = 1, lossCount = 0;
+    <nav class="bottom-nav">
+        <a href="#" class="nav-item active"><span class="nav-icon">🏠</span>Home</a>
+        <a href="#" class="nav-item"><span class="nav-icon">➕</span>Enter Spin</a>
+        <a href="#" class="nav-item"><span class="nav-icon">📈</span>Predictions</a>
+        <a href="#" class="nav-item"><span class="nav-icon">📊</span>Statistics</a>
+        <a href="#" class="nav-item"><span class="nav-icon">🕒</span>History</a>
+    </nav>
 
-    const bg = document.getElementById('btns');
-    for(let i=1; i<=36; i++) {
-        const b = document.createElement('button');
-        b.className = `n-btn ${reds.includes(i) ? 'r' : 'b'}`;
-        b.innerText = i; b.onclick = () => press(i);
-        bg.appendChild(b);
-    }
-
-    function syncBank() {
-        startBank = parseFloat(document.getElementById('start-bank').value) || 0;
-        bankroll = startBank; updateUI();
-    }
-
-    function resetSession() {
-        startBank = parseFloat(document.getElementById('start-bank').value) || 1000;
-        bankroll = startBank; mult = 1; lossCount = 0;
-        spins = []; distanceHistory = []; predictionLog = []; currentBets = [];
-        updateUI();
-    }
-
-    function getPredictions(num) {
-        let targets = [];
-        let fMap = {};
-        distanceHistory.forEach(d => fMap[d] = (fMap[d] || 0) + 1);
-        let sorted = Object.entries(fMap).sort((a,b) => b[1]-a[1]);
-
-        if (sorted.length < 2) return []; // WAIT FOR 2 HOTS
-
-        // Get Top 2 Hot Distances
-        let hots = [parseInt(sorted[0][0]), parseInt(sorted[1][0])];
-        
-        hots.forEach(dist => {
-            let targetIdx = (wheel.indexOf(num) + dist) % 37;
-            let tNum = wheel[targetIdx];
-            if (tNum === 0) return;
-
-            let dsIdx = Math.floor((tNum-1)/6);
-            let stIdx = Math.floor((tNum-1)/3);
-            let dozIdx = Math.ceil(tNum/12);
-
-            if(document.getElementById('play-ds').checked) 
-                targets.push({ label: `DS ${dsIdx+1}`, type: "D-Street", nums: Array.from({length: 6}, (_, i) => dsIdx*6+1+i), pay: 6 });
-            if(document.getElementById('play-st').checked) 
-                targets.push({ label: `ST ${stIdx+1}`, type: "Street", nums: Array.from({length: 3}, (_, i) => stIdx*3+1+i), pay: 12 });
-            if(document.getElementById('play-doz').checked) 
-                targets.push({ label: `DOZ ${dozIdx}`, type: "Dozen", nums: Array.from({length: 12}, (_, i) => (dozIdx-1)*12+1+i), pay: 3 });
-        });
-
-        // Filter to keep only 2 of each type
-        let finalBets = [];
-        ["D-Street", "Street", "Dozen"].forEach(type => {
-            let filtered = targets.filter(b => b.type === type);
-            // Unique labels only
-            let unique = [];
-            let seen = new Set();
-            for (let b of filtered) {
-                if (!seen.has(b.label)) {
-                    unique.push(b);
-                    seen.add(b.label);
-                }
-                if (unique.length === 2) break;
-            }
-            finalBets.push(...unique);
-        });
-
-        return finalBets;
-    }
-
-    function press(val) {
-        let unit = parseFloat(document.getElementById('base-unit').value);
-        let step = parseInt(document.getElementById('prog-step').value);
-
-        // 1. Resolve current bets (Non-accumulating)
-        if (currentBets.length > 0) {
-            let stake = currentBets.length * unit * mult;
-            bankroll -= stake;
-            let hit = currentBets.find(b => b.nums.includes(val));
-            
-            if (hit) {
-                bankroll += (unit * mult * hit.pay);
-                mult = 1; lossCount = 0;
-                predictionLog.unshift({ res: val, win: true, cost: stake });
-            } else {
-                lossCount++;
-                if (lossCount >= step) { mult++; lossCount = 0; }
-                predictionLog.unshift({ res: val, win: false, cost: stake });
-            }
-        }
-
-        // 2. Data Track
-        spins.push(val);
-        if (spins.length >= 2) {
-            const d = (wheel.indexOf(val) - wheel.indexOf(spins[spins.length-2]) + 37) % 37;
-            distanceHistory.push(d);
-        }
-
-        // 3. Generate NEW bets for the NEXT spin (Fresh set)
-        currentBets = getPredictions(val);
-        updateUI();
-    }
-
-    function updateUI() {
-        document.getElementById('stat-balance').innerText = bankroll.toFixed(0);
-        document.getElementById('stat-profit').innerText = (bankroll - startBank).toFixed(0);
-        
-        let fMap = {};
-        distanceHistory.forEach(d => fMap[d] = (fMap[d] || 0) + 1);
-        let sorted = Object.entries(fMap).sort((a,b) => b[1]-a[1]);
-        
-        if (sorted.length >= 2) {
-            document.getElementById('stat-hots').innerText = `${sorted[0][0]}, ${sorted[1][0]}`;
-            document.getElementById('stat-status').innerText = "READY";
-        } else {
-            document.getElementById('stat-hots').innerText = "Scanning...";
-            document.getElementById('stat-status').innerText = "WAITING";
-        }
-
-        document.getElementById('bet-display').innerHTML = currentBets.length > 0 ? 
-            currentBets.map(b => `
-                <div class="bet-individual-card">
-                    <div class="bet-info">${b.type}</div>
-                    <div class="bet-label">${b.label}</div>
-                    <div style="font-size:11px; font-weight:bold">Stake: ${mult * parseFloat(document.getElementById('base-unit').value)}</div>
-                </div>
-            `).join('') : `<div style="padding:20px; color:#b2bec3">Waiting for 2 hot distances to emerge...</div>`;
-
-        document.getElementById('dist-log').innerHTML = `<strong>Latest Dists</strong><br>` + distanceHistory.slice(-10).reverse().map(d => `<div>${d}</div>`).join('');
-        document.getElementById('freq-rank').innerHTML = `<strong>Freq Ranking</strong><br>` + sorted.slice(0, 10).map(x => `<div>D${x[0]}: ${x[1]}x</div>`).join('');
-        document.getElementById('bet-history').innerHTML = predictionLog.slice(0, 5).map(l => 
-            `<div style="border-bottom:1px solid #eee; padding:3px">
-                Spin ${l.res}: ${l.win?'<span style="color:var(--win); font-weight:bold">HIT</span>':'<span style="color:var(--loss)">MISS</span>'} 
-                <small style="float:right; color:#7f8c8d">Stake: ${l.cost}</small>
-            </div>`).join('');
-    }
-
-    function runBulk() {
-        const numbers = document.getElementById('bulk-input').value.split(/[,\s\n]+/).filter(x => x !== "").map(Number);
-        numbers.forEach(n => press(n));
-        document.getElementById('bulk-input').value = "";
-    }
-    resetSession();
-</script>
 </body>
 </html>

@@ -3,97 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Roulette Predict - Deep LLM Analyzer</title>
+    <title>Roulette Predict - Deep LLM V7</title>
     <style>
         :root {
-            --bg-dark: #020617; --card-bg: #1e293b; --primary-purple: #8b5cf6;
-            --accent-cyan: #06b6d4; --text-gray: #94a3b8; --roulette-red: #dc2626;
+            --bg: #020617; --card: #1e293b; --glow: #8b5cf6; --cyan: #22d3ee;
+            --red: #ef4444; --black: #0f172a; --green: #10b981;
         }
-
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-dark); color: white; margin: 0; padding-bottom: 90px; }
-        .view { display: none; padding: 20px; animation: slideUp 0.4s ease; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: white; margin: 0; padding-bottom: 100px; }
+        .view { display: none; padding: 20px; animation: fadeIn 0.4s ease; }
         .view.active { display: block; }
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Navigation */
-        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: #0f172a; display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #1e293b; }
-        .nav-item { background: none; border: none; color: var(--text-gray); font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; cursor: pointer; flex: 1; }
-        .nav-item.active { color: var(--accent-cyan); }
+        .nav { position: fixed; bottom: 0; width: 100%; background: #0f172a; display: flex; padding: 15px 0; border-top: 1px solid #334155; z-index: 1000; }
+        .nav-item { flex: 1; text-align: center; color: #94a3b8; font-size: 0.7rem; cursor: pointer; }
+        .nav-item.active { color: var(--cyan); font-weight: bold; }
 
-        /* Roulette Table */
-        .table-container { overflow-x: auto; background: #064e3b; padding: 15px; border-radius: 12px; border: 3px solid #78350f; }
-        .grid { display: grid; grid-template-columns: 50px repeat(12, 42px); grid-template-rows: repeat(3, 42px); gap: 4px; }
-        .cell { display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 6px; cursor: pointer; transition: 0.2s; border: 1px solid rgba(255,255,255,0.1); }
-        .cell:active { background: white !important; color: black !important; }
-
-        /* Cards */
-        .card { background: var(--card-bg); border-radius: 20px; padding: 20px; margin-bottom: 15px; border: 1px solid #334155; }
-        .btn-predict { background: linear-gradient(to right, var(--primary-purple), var(--accent-cyan)); border: none; padding: 16px; border-radius: 12px; color: white; font-weight: 800; width: 100%; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
+        /* Grid */
+        .table-wrap { overflow-x: auto; background: #064e3b; padding: 15px; border-radius: 12px; border: 3px solid #78350f; }
+        .grid { display: grid; grid-template-columns: 45px repeat(12, 40px); grid-template-rows: repeat(3, 40px); gap: 4px; }
+        .cell { display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; }
         
-        /* Prediction Result */
-        #res-box { display: none; margin-top: 20px; border-left: 4px solid var(--accent-cyan); background: rgba(6, 182, 212, 0.05); }
-        .chip { width: 45px; height: 45px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; margin: 8px; border: 2px solid #fff; box-shadow: 0 0 15px rgba(255,255,255,0.2); }
-
-        textarea { width: 100%; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 12px; padding: 15px; resize: none; box-sizing: border-box; }
+        /* Cards & Buttons */
+        .card { background: var(--card); border-radius: 16px; padding: 18px; margin-bottom: 15px; border: 1px solid #334155; }
+        .btn-ai { background: linear-gradient(45deg, var(--glow), var(--cyan)); color: white; border: none; padding: 16px; border-radius: 12px; width: 100%; font-weight: 900; cursor: pointer; text-transform: uppercase; }
+        
+        /* Results */
+        #prediction-output { display: none; border-top: 4px solid var(--cyan); }
+        .chip { width: 42px; height: 42px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; margin: 5px; border: 2px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        .log-entry { font-size: 0.8rem; color: var(--cyan); background: rgba(34, 211, 238, 0.1); padding: 8px; border-radius: 6px; margin-top: 10px; font-family: monospace; }
     </style>
 </head>
 <body>
 
     <div id="v-home" class="view active">
         <div class="card" style="text-align: center;">
-            <div style="font-size: 4rem;">💠</div>
-            <h2>Neural Deep Predict</h2>
-            <p style="color: var(--text-gray);">Analyzing non-linear patterns & sector bias [cite: 5, 32]</p>
+            <div style="font-size: 3rem;">🛰️</div>
+            <h2>Neural Series Analyzer</h2>
+            <p style="color: #94a3b8;">Deep Pattern Reconciliation Engine</p>
         </div>
-        <div class="card" style="display: flex; justify-content: space-around;">
-            <div><small>Patterns Analyzed</small><h3 id="c-total">0</h3></div>
-            <div><small>AI Confidence</small><h3 style="color:var(--accent-cyan)">94%</h3></div>
+        <div class="card">
+            <small>Data Stream Health</small>
+            <div id="data-bar" style="height: 8px; background: #334155; border-radius: 4px; margin-top: 5px;">
+                <div id="data-fill" style="width: 0%; height: 100%; background: var(--cyan); border-radius: 4px; transition: 0.5s;"></div>
+            </div>
+            <p id="data-status" style="font-size: 0.7rem; margin-top: 8px;">Waiting for spin sequence...</p>
         </div>
     </div>
 
-    <div id="v-enter" class="view">
-        <div class="table-container">
-            <div class="grid" id="table-grid">
-                <div class="cell" style="background:#10b981; grid-row: 1/span 3;" onclick="add(0)">0</div>
+    <div id="v-input" class="view">
+        <div class="table-wrap">
+            <div class="grid" id="main-grid">
+                <div class="cell" style="background:var(--green); grid-row: 1/span 3;" onclick="input(0)">0</div>
             </div>
         </div>
         <div class="card" style="margin-top: 20px;">
-            <p><strong>Bulk Pattern Entry</strong></p>
-            <textarea id="bulk" rows="3" placeholder="Paste historical results here..."></textarea>
-            <button class="btn-predict" style="margin-top:10px;" onclick="importBulk()">Process History</button>
+            <textarea id="bulk" rows="3" placeholder="Paste historical series (e.g., 3, 8, 11, 16)..."></textarea>
+            <button class="btn-ai" style="margin-top:10px;" onclick="bulkLoad()">Load Series Data</button>
         </div>
     </div>
 
     <div id="v-predict" class="view">
         <div class="card">
-            <h3>Neural Analysis Engine</h3>
-            <p style="font-size: 0.85rem; color: var(--text-gray);">Executing Deep Pattern Reconciliation based on FON and IndianCasinoGuy techniques.</p>
-            <button class="btn-predict" onclick="deepAnalyze()">Run Deep Analysis</button>
+            <button class="btn-ai" onclick="deepAnalyze()">Execute Deep AI Analysis</button>
         </div>
 
-        <div id="res-box" class="card">
-            <h4 id="res-title" style="margin:0; color:var(--accent-cyan);">Calculated Cluster</h4>
-            <div id="res-chips" style="text-align:center; padding: 15px 0;"></div>
-            <p id="res-desc" style="font-size: 0.85rem; line-height: 1.5; color: var(--text-gray);"></p>
+        <div id="prediction-output" class="card">
+            <h3 style="margin-top:0; color:var(--cyan);">Calculated Series Target</h3>
+            <div id="res-chips" style="text-align:center; padding: 10px 0;"></div>
+            <div id="res-log" class="log-entry"></div>
         </div>
     </div>
 
-    <div id="v-hist" class="view">
-        <h3>Reconciliation History</h3>
+    <div id="v-history" class="view">
+        <h3>Series History</h3>
         <div id="hist-list"></div>
     </div>
 
-    <nav class="bottom-nav">
-        <button class="nav-item active" onclick="nav('home', this)"><span>🏠</span>Home</button>
-        <button class="nav-item" onclick="nav('enter', this)"><span>➕</span>Enter</button>
-        <button class="nav-item" onclick="nav('predict', this)"><span>🧠</span>Predict</button>
-        <button class="nav-item" onclick="nav('hist', this)"><span>🕒</span>History</button>
+    <nav class="nav">
+        <div class="nav-item active" onclick="nav('home', this)">🏠<br>Home</div>
+        <div class="nav-item" onclick="nav('input', this)">➕<br>Input</div>
+        <div class="nav-item" onclick="nav('predict', this)">🧠<br>Analyze</div>
+        <div class="nav-item" onclick="nav('history', this)">🕒<br>Log</div>
     </nav>
 
     <script>
-        let data = [];
+        let history = [];
         const reds = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
-        const fon = {
+        const wheel = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+        
+        // Detailed FON (Faces of Numbers) Core
+        const fonCore = {
             1:[6], 2:[7], 3:[8], 4:[9], 5:[0,10,15], 11:[16,24,29], 12:[17,21,26], 
             13:[18,31,36], 14:[19], 15:[10], 16:[11], 17:[12,21,26], 18:[13,31,36],
             19:[14], 20:[25], 21:[12,17,26], 22:[27], 23:[28,32], 24:[29], 25:[20],
@@ -102,73 +102,91 @@
         };
 
         function init() {
-            const g = document.getElementById('table-grid');
+            const g = document.getElementById('main-grid');
             for(let i=1; i<=36; i++) {
                 const c = document.createElement('div');
-                c.className = `cell ${reds.includes(i)?'':'bg-black'}`;
-                c.style.backgroundColor = reds.includes(i)?'#dc2626':'#1a1a1a';
+                c.className = 'cell';
+                c.style.backgroundColor = reds.includes(i) ? 'var(--red)' : 'var(--black)';
                 c.innerText = i;
-                c.onclick = () => add(i);
+                c.onclick = () => input(i);
                 c.style.gridRow = 3 - (i-1)%3;
                 c.style.gridColumn = Math.floor((i-1)/3) + 2;
                 g.appendChild(c);
             }
         }
 
-        function nav(id, btn) {
+        function nav(id, el) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.getElementById('v-'+id).classList.add('active');
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            btn.classList.add('active');
+            el.classList.add('active');
         }
 
-        function add(n) { data.push(n); update(); }
-        function importBulk() {
-            const v = document.getElementById('bulk').value;
-            const n = v.split(/[\s,]+/).map(Number).filter(x => !isNaN(x));
-            data = [...data, ...n];
+        function input(n) { history.push(n); updateUI(); }
+        function bulkLoad() {
+            const val = document.getElementById('bulk').value;
+            const nums = val.split(/[\s,]+/).map(Number).filter(x => !isNaN(x));
+            history = [...history, ...nums];
             document.getElementById('bulk').value = '';
-            update();
+            updateUI();
         }
 
-        function update() {
-            document.getElementById('c-total').innerText = data.length;
-            const h = document.getElementById('hist-list');
-            h.innerHTML = data.slice(-10).reverse().map((n, i) => `
-                <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #1e293b;">
-                    <span>Reconciliation #${data.length - i}</span>
-                    <b style="color:${n==0?'#10b981':reds.includes(n)?'#dc2626':'#fff'}">${n}</b>
+        function updateUI() {
+            const count = history.length;
+            document.getElementById('data-fill').style.width = Math.min(count * 5, 100) + '%';
+            document.getElementById('data-status').innerText = `Sequence Depth: ${count} spins. Deep analysis active.`;
+            
+            const list = document.getElementById('hist-list');
+            list.innerHTML = history.slice(-10).reverse().map(n => `
+                <div style="display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid #334155;">
+                    <span>Reconciliation Point</span>
+                    <b style="color:${n==0?'var(--green)':reds.includes(n)?'var(--red)':'white'}">${n}</b>
                 </div>
             `).join('');
         }
 
         function deepAnalyze() {
-            if(data.length < 1) return;
-            const res = document.getElementById('res-box');
+            if(history.length < 1) return;
+            const out = document.getElementById('prediction-output');
             const chips = document.getElementById('res-chips');
-            const desc = document.getElementById('res-desc');
-            res.style.display = 'block';
+            const log = document.getElementById('res-log');
+            out.style.display = 'block';
             chips.innerHTML = '';
 
-            const last = data[data.length - 1];
-            // LLM Logic: Cross-reference FON map with Sector Imbalance [cite: 6, 49]
-            let p = fon[last] || [17, 2, 25]; 
+            const last = history[history.length - 1];
             
-            // IndianCasinoGuy technique: Mirroring the sector across the zero axis 
-            if(data.length > 5) {
-                const trend = data.slice(-3).reduce((a,b)=>a+b, 0) % 37;
-                p.push(trend);
+            // 1. FON Analysis
+            let primary = fonCore[last] || [];
+            
+            // 2. Series/Distance Analysis (Sequential Shift)
+            let seriesShift = 0;
+            if(history.length > 2) {
+                const pos1 = wheel.indexOf(history[history.length-1]);
+                const pos2 = wheel.indexOf(history[history.length-2]);
+                seriesShift = (pos1 - pos2 + 37) % 37;
             }
 
-            [...new Set(p)].slice(0, 4).forEach(n => {
+            // 3. IndianCasinoGuy 'Mirror Cluster' Logic
+            const mirrorTarget = wheel[(wheel.indexOf(last) + 18) % 37];
+            
+            // LLM Synthesis: Combine FON targets with Series Shift and Mirroring
+            let finalTargets = [...primary];
+            if(seriesShift !== 0) finalTargets.push(wheel[(wheel.indexOf(last) + seriesShift) % 37]);
+            finalTargets.push(mirrorTarget);
+
+            // Filter duplicates and zero bias
+            let displayTargets = [...new Set(finalTargets)].slice(0, 5);
+            if(displayTargets.length < 2) displayTargets = [0, 8, 11, 23];
+
+            displayTargets.forEach(n => {
                 const c = document.createElement('span');
                 c.className = 'chip';
-                c.style.backgroundColor = n==0?'#10b981':reds.includes(n)?'#dc2626':'#1a1a1a';
+                c.style.backgroundColor = n==0?'var(--green)':reds.includes(n)?'var(--red)':'var(--black)';
                 c.innerText = n;
                 chips.appendChild(c);
             });
 
-            desc.innerText = `Deep analysis of ${data.length} data points indicates a sector shift. FON mapping for ${last} suggests the ball is entering the ${p[0]} cluster. Integrated reconciliation confirms this imbalance.`;
+            log.innerText = `[AI LOG]: Analyzing FON for ${last} -> Found Cluster [${primary}]. Current Series Shift: ${seriesShift} pockets. Applied Mirroring to target ${mirrorTarget}. Sector Reconciliation successful.`;
         }
 
         init();

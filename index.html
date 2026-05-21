@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roulette Hot/Cold Section Tracker</title>
+    <title>Roulette Wide-Symmetric Section Tracker</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -60,7 +60,6 @@
         button:hover {
             background-color: #2ecc71;
         }
-        /* European Betting Table Styles */
         .table-container {
             overflow-x: auto;
             margin: 20px 0;
@@ -85,21 +84,14 @@
             cursor: pointer;
             position: relative;
         }
-        .zero {
-            background-color: #27ae60;
-        }
-        .red {
-            background-color: #c0392b;
-        }
-        .black {
-            background-color: #2c3e50;
-        }
+        .zero { background-color: #27ae60; }
+        .red { background-color: #c0392b; }
+        .black { background-color: #2c3e50; }
         .roulette-table td:hover {
             opacity: 0.8;
             transform: scale(1.05);
             z-index: 2;
         }
-        /* Dashboard & Units styling */
         .dashboard {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -116,7 +108,7 @@
         .panel.cold { border-top-color: #3498db; }
         .panel h3 { margin-top: 0; }
         .number-list {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
             letter-spacing: 1px;
             background: #202e3b;
@@ -134,7 +126,7 @@
             background-color: #202e3b;
             padding: 10px;
             border-radius: 6px;
-            max-height: 120px;
+            max-height: 140px;
             overflow-y: auto;
             font-family: monospace;
             font-size: 12px;
@@ -144,13 +136,12 @@
 <body>
 
 <div class="container">
-    <h1>Roulette Section Tracker</h1>
+    <h1>Roulette Section Tracker (9-Num Disjoint Zones)</h1>
     
     <div class="flex-section">
         <div class="input-box">
             <h3>1. Paste Initial Numbers</h3>
-            <p style="font-size: 12px; color: #bdc3c7; margin-top: -10px;">Separate by spaces, commas, or newlines.</p>
-            <textarea id="initialNumbers" placeholder="Example: 32, 15, 19, 4, 21, 2, 25, 17, 34, 6..."></textarea>
+            <textarea id="initialNumbers" placeholder="Example: 32, 15, 19, 4, 21, 2, 25..."></textarea>
             <button onclick="importNumbers()">Analyze & Initialize</button>
         </div>
         
@@ -161,7 +152,7 @@
         </div>
     </div>
 
-    <h3>2. European Table (Click to record new winning numbers)</h3>
+    <h3>2. European Table (Click to enter hit number)</h3>
     <div class="table-container">
         <table class="roulette-table">
             <tr>
@@ -212,17 +203,17 @@
 
     <div class="dashboard">
         <div class="panel hot">
-            <h3>🔥 Hot Section (Peak + 5 Neighbors)</h3>
+            <h3>🔥 Hot Section (Core + 4 Left & 4 Right)</h3>
             <p>Core Hot No: <span id="hotCore" style="color:#e74c3c; font-weight:bold;">-</span></p>
-            <p>Full Section Coverage:</p>
+            <p>Section Layout (9 Nos Total):</p>
             <div id="hotSectionContainer" class="number-list">-</div>
             <div class="unit-display">Hot Unit: <span id="hotUnit">1</span></div>
         </div>
         
         <div class="panel cold">
-            <h3>❄️ Cold Section (Pit + 5 Neighbors)</h3>
+            <h3>❄️ Cold Section (Core + 4 Left & 4 Right)</h3>
             <p>Core Cold No: <span id="coldCore" style="color:#3498db; font-weight:bold;">-</span></p>
-            <p>Full Section Coverage:</p>
+            <p>Section Layout (9 Nos Total):</p>
             <div id="coldSectionContainer" class="number-list">-</div>
             <div class="unit-display">Cold Unit: <span id="coldUnit">1</span></div>
         </div>
@@ -230,12 +221,12 @@
 
     <div style="margin-top:20px;">
         <h3>System Log</h3>
-        <div id="logBox" class="log-box">System initialized. Waiting for data...</div>
+        <div id="logBox" class="log-box">System ready. Paste initial numbers or use table map.</div>
     </div>
 </div>
 
 <script>
-    // European Roulette Wheel Sequence Layout
+    // Exact layout sequence of a European Roulette Wheel
     const wheelOrder = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
     
     let history = [];
@@ -245,15 +236,17 @@
     let hotSectionNumbers = [];
     let coldSectionNumbers = [];
 
-    // Helper function to extract 5 clockwise neighbors from the European wheel
-    function getSectionWithFiveNeighbors(coreNumber) {
+    // Fetches 4 numbers to the left and 4 numbers to the right of the core number on the wheel
+    function getSymmetricNeighborsWide(coreNumber) {
         let index = wheelOrder.indexOf(coreNumber);
         if (index === -1) return [];
         
         let section = [];
-        // Include the core number and the next 5 numbers moving clockwise
-        for (let i = 0; i <= 5; i++) {
-            let targetIndex = (index + i) % wheelOrder.length;
+        let totalPositions = wheelOrder.length;
+
+        // Fetch 4 left, core number, then 4 right (total 9 numbers)
+        for (let i = -4; i <= 4; i++) {
+            let targetIndex = (index + i + totalPositions) % totalPositions;
             section.push(wheelOrder[targetIndex]);
         }
         return section;
@@ -261,7 +254,6 @@
 
     function importNumbers() {
         const rawInput = document.getElementById('initialNumbers').value;
-        // Parse numbers out of spaces, commas, lines
         const parsed = rawInput.replace(/,/g, ' ').split(/\s+/).map(Number).filter(n => !isNaN(n) && n >= 0 && n <= 36);
         
         if(parsed.length === 0) {
@@ -276,50 +268,57 @@
 
     function handleTableClick(number) {
         history.push(number);
-        log(`Number Clicked: ${number}`);
+        log(`Number Inputted: ${number}`);
         
-        // Evaluate condition BEFORE recalculating/updating the hot/cold matrix for the next spin
+        // Evaluate progressions based on prior system states
         evaluateProgressionRules(number);
         
-        // Run analysis to shift hot/cold zones based on current sliding window
+        // Refresh analysis matrix with rolling last 40 numbers
         analyzeHotCold();
     }
 
     function analyzeHotCold() {
-        // Limit window to last 40 numbers
         let lookupWindow = history.slice(-40);
         
-        // Count frequencies
         let frequencies = {};
         for(let i=0; i<=36; i++) frequencies[i] = 0;
         lookupWindow.forEach(num => frequencies[num]++);
 
-        // Find absolute Hot (highest frequency) and Cold (lowest frequency)
-        let maxFreq = -1;
-        let minFreq = Infinity;
-        let absoluteHot = 0;
-        let absoluteCold = 0;
-
-        // Loop through the wheel sequence to preserve preferential bias rules or normal hierarchy
+        // Create an array sorted by frequency
+        let sortedNumbers = [];
         wheelOrder.forEach(num => {
-            let freq = frequencies[num];
-            // Get highest hit rate
-            if(freq > maxFreq) {
-                maxFreq = freq;
-                absoluteHot = num;
-            }
-            // Get lowest hit rate (least hit)
-            if(freq < minFreq) {
-                minFreq = freq;
-                absoluteCold = num;
-            }
+            sortedNumbers.push({ number: num, freq: frequencies[num] });
         });
 
-        // Generate full 6-number tracking blocks (Core + 5 neighbors)
-        hotSectionNumbers = getSectionWithFiveNeighbors(absoluteHot);
-        coldSectionNumbers = getSectionWithFiveNeighbors(absoluteCold);
+        // Sort Hot (High to Low frequency), Sort Cold (Low to High frequency)
+        let hotCandidates = [...sortedNumbers].sort((a, b) => b.freq - a.freq);
+        let coldCandidates = [...sortedNumbers].sort((a, b) => a.freq - b.freq);
 
-        // Update DOM
+        let absoluteHot = hotCandidates[0].number;
+        hotSectionNumbers = getSymmetricNeighborsWide(absoluteHot);
+
+        // Find a distinct Cold target section that does NOT intersect with the chosen Hot section
+        let absoluteCold = null;
+        for (let candidate of coldCandidates) {
+            let temporaryColdSection = getSymmetricNeighborsWide(candidate.number);
+            
+            // Intersection check: Ensure no element overlaps between the two 9-number zones
+            let doesIntersect = temporaryColdSection.some(num => hotSectionNumbers.includes(num));
+            
+            if (!doesIntersect) {
+                absoluteCold = candidate.number;
+                coldSectionNumbers = temporaryColdSection;
+                break;
+            }
+        }
+
+        // Emergency fallback if fields are completely saturated
+        if (absoluteCold === null) {
+            absoluteCold = coldCandidates[0].number;
+            coldSectionNumbers = getSymmetricNeighborsWide(absoluteCold);
+        }
+
+        // Update DOM Elements
         document.getElementById('recentHistory').innerText = lookupWindow.join(', ');
         document.getElementById('totalCount').innerText = history.length;
         
@@ -331,34 +330,26 @@
     }
 
     function evaluateProgressionRules(winningNumber) {
-        // Stop if sections haven't been compiled yet
         if(hotSectionNumbers.length === 0 || coldSectionNumbers.length === 0) return;
 
         let hitHot = hotSectionNumbers.includes(winningNumber);
         let hitCold = coldSectionNumbers.includes(winningNumber);
 
-        log(`Checking win criteria against existing blocks...`);
-
         if (hitHot) {
-            // Rule: "if no clicked by user is from hot section then increment 1 unit of cold section and for win decrease 1 unit"
-            // Interpreted logic: Hit Hot -> increment Cold Unit by 1. Since it's also a win on Hot, decrement Hot Unit.
             coldUnitValue += 1;
-            hotUnitValue = Math.max(1, hotUnitValue - 1); // Floor unit adjustments at 1 minimum
+            hotUnitValue = Math.max(1, hotUnitValue - 1); 
             log(`🎯 Hit Hot Section! Cold Unit +1 (${coldUnitValue}), Hot Unit -1 (${hotUnitValue}).`);
         } 
         else if (hitCold) {
-            // Win occurs on Cold Section: decrease Cold Unit by 1.
             coldUnitValue = Math.max(1, coldUnitValue - 1);
             log(`🎯 Hit Cold Section! Cold Unit decreased to (${coldUnitValue}).`);
         } 
         else {
-            // Rule: "if loss occurs in both sections increase 1 unit in both"
             hotUnitValue += 1;
             coldUnitValue += 1;
-            log(`❌ Missed both sections. Progression: Hot Unit +1 (${hotUnitValue}), Cold Unit +1 (${coldUnitValue}).`);
+            log(`❌ Missed both zones. Progression: Hot Unit +1 (${hotUnitValue}), Cold Unit +1 (${coldUnitValue}).`);
         }
 
-        // Render values to browser UI
         document.getElementById('hotUnit').innerText = hotUnitValue;
         document.getElementById('coldUnit').innerText = coldUnitValue;
     }

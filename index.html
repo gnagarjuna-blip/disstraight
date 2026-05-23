@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roulette Deep-Symmetric Hot Tracker (14-Spin Advanced)</title>
+    <title>Roulette Deep-Symmetric Hot Tracker (With Advanced Balance Simulation)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -136,10 +136,27 @@
             background-color: #202e3b;
             padding: 10px;
             border-radius: 6px;
-            max-height: 140px;
+            max-height: 160px;
             overflow-y: auto;
             font-family: monospace;
             font-size: 12px;
+        }
+        .sim-stats {
+            background-color: #2c3e50;
+            border: 2px dashed #f1c40f;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+        .config-input {
+            width: 80px;
+            background-color: #ecf0f1;
+            color: #2c3e50;
+            border: none;
+            padding: 4px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-right: 10px;
         }
     </style>
 </head>
@@ -152,6 +169,12 @@
         <div class="input-box">
             <h3>1. Paste Initial Numbers (Top is Latest / Read Bottom to Top)</h3>
             <textarea id="initialNumbers" placeholder="Example: 10 (Latest)&#10;14&#10;31&#10;9 (Oldest)"></textarea>
+            <div style="margin-top: 10px;">
+                <label>Starting Bankroll: </label>
+                <input type="number" id="startBankroll" class="config-input" value="1000">
+                <label>Unit Size: </label>
+                <input type="number" id="unitSize" class="config-input" value="1">
+            </div>
             <button onclick="importNumbers()">Analyze & Initialize</button>
         </div>
         
@@ -193,7 +216,7 @@
                 <td class="red" onclick="handleTableClick(23)">23</td>
                 <td class="black" onclick="handleTableClick(26)">26</td>
                 <td class="red" onclick="handleTableClick(29)">29</td>
-                <td class="black" onclick="handleTableClick(32), ">32</td>
+                <td class="black" onclick="handleTableClick(32)">32</td>
                 <td class="black" onclick="handleTableClick(35)">35</td>
             </tr>
             <tr>
@@ -231,9 +254,22 @@
         </div>
     </div>
 
-    <div style="margin-top:20px;">
-        <h3>System Log</h3>
-        <div id="logBox" class="log-box">System ready. Paste initial numbers or use table map.</div>
+    <div class="flex-section" style="margin-top:20px;">
+        <div style="flex: 1.2;">
+            <h3>System Log</h3>
+            <div id="logBox" class="log-box">System ready. Paste initial numbers or use table map.</div>
+        </div>
+        <div style="flex: 1;">
+            <h3>Simulation Performance Stats</h3>
+            <div class="sim-stats">
+                <p>Max Win Streak: <span id="maxWinStreak" style="color:#2ecc71; font-weight:bold;">0</span></p>
+                <p>Max Loss Streak: <span id="maxLossStreak" style="color:#e74c3c; font-weight:bold;">0</span></p>
+                <hr style="border: 1px dashed #4f5d73;">
+                <p>Current Balance: <span id="curBalance" style="color:#f1c40f; font-weight:bold;">0</span></p>
+                <p>Max Peak (Highest Balance): <span id="maxBalancePeak" style="color:#2ecc71; font-weight:bold;">0</span></p>
+                <p>Max Drop (Lowest Balance): <span id="maxBalanceDrop" style="color:#e74c3c; font-weight:bold;">0</span></p>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -241,12 +277,17 @@
     const wheelOrder = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
     
     let history = [];
-    let winLossHistory = []; // Keeps global align tracking of W or L per spin
+    let winLossHistory = []; 
     let hotUnitValue = 1;
     let oppositeUnitValue = 1;
 
     let hotSectionNumbers = [];
     let oppositeSectionNumbers = [];
+
+    // Financial Trackers
+    let currentBalance = 1000;
+    let maxPeak = 1000;
+    let maxDrop = 1000;
 
     function getSymmetricNeighborsWide(coreNumber) {
         let index = wheelOrder.indexOf(coreNumber);
@@ -282,20 +323,25 @@
 
         parsed.reverse();
 
-        // Clear existing cache for a clean simulation back-calculation
+        // Setup financial baseline variables
+        const startWallet = parseFloat(document.getElementById('startBankroll').value) || 1000;
+        currentBalance = startWallet;
+        maxPeak = startWallet;
+        maxDrop = startWallet;
+
         history = [];
         winLossHistory = [];
         hotUnitValue = 1;
         oppositeUnitValue = 1;
 
-        // Process step by step historically to calculate exact progression trends
         parsed.forEach(num => {
             history.push(num);
             evaluateProgressionRules(num);
             analyzeHotCold();
         });
 
-        log(`Imported ${parsed.length} numbers. Read sequence processed from bottom to top.`);
+        calculateMaxStreaks();
+        log(`Imported ${parsed.length} numbers. Financial balance metrics and trends calculated.`);
     }
 
     function handleTableClick(number) {
@@ -304,6 +350,7 @@
         
         evaluateProgressionRules(number);
         analyzeHotCold();
+        calculateMaxStreaks();
     }
 
     function analyzeHotCold() {
@@ -326,12 +373,10 @@
         let absoluteOpposite = getOppositeWheelNumber(absoluteHot);
         oppositeSectionNumbers = getSymmetricNeighborsWide(absoluteOpposite);
 
-        // UI Updates
         let displayWindow = [...lookupWindow].reverse();
         document.getElementById('recentHistory').innerText = displayWindow.join(', ');
         document.getElementById('totalCount').innerText = history.length;
         
-        // Grab the last 14 records of the global W/L chain 
         let currentStreakWindow = winLossHistory.slice(-14);
         document.getElementById('streakDisplay').innerText = currentStreakWindow.length > 0 ? currentStreakWindow.join(' ') : 'None';
 
@@ -343,38 +388,86 @@
     }
 
     function evaluateProgressionRules(winningNumber) {
-        // If it's the absolute first spin setup, skip scoring but note as a placeholder loss
+        const uSize = parseFloat(document.getElementById('unitSize').value) || 1;
+
+        // If it's the absolute first spin tracking preparation frame, skip betting logic calculation
         if(hotSectionNumbers.length === 0 || oppositeSectionNumbers.length === 0) {
             winLossHistory.push('L');
+            updateBalanceUI();
             return;
         }
+
+        // Betting Cost: 11 spots on Hot and 11 spots on Opposite section (22 slots total)
+        let totalCurrentBetUnits = hotUnitValue * 11 + oppositeUnitValue * 11;
+        let totalCashRisk = totalCurrentBetUnits * uSize;
+
+        // Deduct cost of layout
+        currentBalance -= totalCashRisk;
 
         let hitHot = hotSectionNumbers.includes(winningNumber);
         let hitOpposite = oppositeSectionNumbers.includes(winningNumber);
 
         if (hitHot) {
             winLossHistory.push('W');
+            // Straight up win returns 36 times the piece wagered
+            let winPayout = (hotUnitValue * uSize) * 36;
+            currentBalance += winPayout;
+
             oppositeUnitValue += 1;
-            // CHANGED: On win, decrease by 2 units instead of 1
             hotUnitValue = Math.max(1, hotUnitValue - 2); 
-            log(`🎯 Hit Primary Hot Zone! Opposite Unit +1 (${oppositeUnitValue}), Primary Hot Unit -2 (${hotUnitValue}).`);
+            log(`🎯 Hit Primary Hot Zone! Paid: $${winPayout.toFixed(1)}. Opposite Unit +1 (${oppositeUnitValue}), Primary Hot Unit -2 (${hotUnitValue}).`);
         } 
         else if (hitOpposite) {
             winLossHistory.push('W');
-            // CHANGED: On win, decrease by 2 units instead of 1
+            let winPayout = (oppositeUnitValue * uSize) * 36;
+            currentBalance += winPayout;
+
             oppositeUnitValue = Math.max(1, oppositeUnitValue - 2);
             hotUnitValue += 1; 
-            log(`🎯 Hit Opposite Hot Zone! Opposite Unit -2 (${oppositeUnitValue}), Primary Hot Unit +1 (${hotUnitValue}).`);
+            log(`🎯 Hit Opposite Hot Zone! Paid: $${winPayout.toFixed(1)}. Opposite Unit -2 (${oppositeUnitValue}), Primary Hot Unit +1 (${hotUnitValue}).`);
         } 
         else {
             winLossHistory.push('L');
             hotUnitValue += 1;
             oppositeUnitValue += 1;
-            log(`❌ Missed both zones. Progression: Primary Unit +1 (${hotUnitValue}), Opposite Unit +1 (${oppositeUnitValue}).`);
+            log(`❌ Missed both zones (Lost -$${totalCashRisk.toFixed(1)}). Progression: Primary Unit +1 (${hotUnitValue}), Opposite Unit +1 (${oppositeUnitValue}).`);
         }
+
+        // Evaluate peaks and valleys tracking
+        if(currentBalance > maxPeak) maxPeak = currentBalance;
+        if(currentBalance < maxDrop) maxDrop = currentBalance;
 
         document.getElementById('hotUnit').innerText = hotUnitValue;
         document.getElementById('oppositeUnit').innerText = oppositeUnitValue;
+        updateBalanceUI();
+    }
+
+    function updateBalanceUI() {
+        document.getElementById('curBalance').innerText = currentBalance.toFixed(1);
+        document.getElementById('maxBalancePeak').innerText = maxPeak.toFixed(1);
+        document.getElementById('maxBalanceDrop').innerText = maxDrop.toFixed(1);
+    }
+
+    function calculateMaxStreaks() {
+        let maxWin = 0;
+        let maxLoss = 0;
+        let currentWin = 0;
+        let currentLoss = 0;
+
+        winLossHistory.forEach(result => {
+            if (result === 'W') {
+                currentWin++;
+                if (currentWin > maxWin) maxWin = currentWin;
+                currentLoss = 0;
+            } else if (result === 'L') {
+                currentLoss++;
+                if (currentLoss > maxLoss) maxLoss = currentLoss;
+                currentWin = 0;
+            }
+        });
+
+        document.getElementById('maxWinStreak').innerText = maxWin;
+        document.getElementById('maxLossStreak').innerText = maxLoss;
     }
 
     function log(message) {

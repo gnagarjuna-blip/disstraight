@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roulette Deep-Symmetric Hot Tracker (14 Spin Window)</title>
+    <title>Roulette Deep-Symmetric Hot Tracker (14-Spin Advanced)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -116,6 +116,16 @@
             border-radius: 4px;
             min-height: 24px;
         }
+        .streak-list {
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            background: #16a085;
+            padding: 6px;
+            border-radius: 4px;
+            min-height: 20px;
+            margin-top: 5px;
+        }
         .unit-display {
             font-size: 24px;
             font-weight: bold;
@@ -149,6 +159,8 @@
             <h3>Recent History (Last 14 Analysis Window)</h3>
             <div id="recentHistory" class="number-list" style="word-wrap: break-word;">None</div>
             <p>Total Registered Session Spins: <span id="totalCount" style="font-weight:bold; color:#f1c40f;">0</span></p>
+            <p style="margin-bottom:2px;">Win/Loss Streak (Last 14 Spins):</p>
+            <div id="streakDisplay" class="streak-list">None</div>
         </div>
     </div>
 
@@ -181,7 +193,7 @@
                 <td class="red" onclick="handleTableClick(23)">23</td>
                 <td class="black" onclick="handleTableClick(26)">26</td>
                 <td class="red" onclick="handleTableClick(29)">29</td>
-                <td class="black" onclick="handleTableClick(32)">32</td>
+                <td class="black" onclick="handleTableClick(32), ">32</td>
                 <td class="black" onclick="handleTableClick(35)">35</td>
             </tr>
             <tr>
@@ -226,17 +238,16 @@
 </div>
 
 <script>
-    // Exact layout sequence of a European Roulette Wheel
     const wheelOrder = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
     
     let history = [];
+    let winLossHistory = []; // Keeps global align tracking of W or L per spin
     let hotUnitValue = 1;
     let oppositeUnitValue = 1;
 
     let hotSectionNumbers = [];
     let oppositeSectionNumbers = [];
 
-    // Fetches 5 numbers to the left and 5 numbers to the right of the core number (Total 11)
     function getSymmetricNeighborsWide(coreNumber) {
         let index = wheelOrder.indexOf(coreNumber);
         if (index === -1) return [];
@@ -251,7 +262,6 @@
         return section;
     }
 
-    // Calculates the direct opposite wheel intersection position
     function getOppositeWheelNumber(coreNumber) {
         let index = wheelOrder.indexOf(coreNumber);
         if (index === -1) return null;
@@ -270,12 +280,22 @@
             return;
         }
 
-        // Reversing inputs so history parses oldest first up to newest
         parsed.reverse();
 
-        history = parsed;
-        log(`Imported ${parsed.length} numbers. Hot zone tracking now localized to the last 14 spins.`);
-        analyzeHotCold();
+        // Clear existing cache for a clean simulation back-calculation
+        history = [];
+        winLossHistory = [];
+        hotUnitValue = 1;
+        oppositeUnitValue = 1;
+
+        // Process step by step historically to calculate exact progression trends
+        parsed.forEach(num => {
+            history.push(num);
+            evaluateProgressionRules(num);
+            analyzeHotCold();
+        });
+
+        log(`Imported ${parsed.length} numbers. Read sequence processed from bottom to top.`);
     }
 
     function handleTableClick(number) {
@@ -287,7 +307,6 @@
     }
 
     function analyzeHotCold() {
-        // CHANGED: Lookup window is now limited strictly to the last 14 spins
         let lookupWindow = history.slice(-14);
         
         let frequencies = {};
@@ -299,7 +318,6 @@
             sortedNumbers.push({ number: num, freq: frequencies[num] });
         });
 
-        // Sort Hot (High to Low frequency inside the 14 spin limit)
         let hotCandidates = [...sortedNumbers].sort((a, b) => b.freq - a.freq);
 
         let absoluteHot = hotCandidates[0].number;
@@ -313,6 +331,10 @@
         document.getElementById('recentHistory').innerText = displayWindow.join(', ');
         document.getElementById('totalCount').innerText = history.length;
         
+        // Grab the last 14 records of the global W/L chain 
+        let currentStreakWindow = winLossHistory.slice(-14);
+        document.getElementById('streakDisplay').innerText = currentStreakWindow.length > 0 ? currentStreakWindow.join(' ') : 'None';
+
         document.getElementById('hotCore').innerText = absoluteHot;
         document.getElementById('hotSectionContainer').innerText = hotSectionNumbers.join(', ');
         
@@ -321,22 +343,31 @@
     }
 
     function evaluateProgressionRules(winningNumber) {
-        if(hotSectionNumbers.length === 0 || oppositeSectionNumbers.length === 0) return;
+        // If it's the absolute first spin setup, skip scoring but note as a placeholder loss
+        if(hotSectionNumbers.length === 0 || oppositeSectionNumbers.length === 0) {
+            winLossHistory.push('L');
+            return;
+        }
 
         let hitHot = hotSectionNumbers.includes(winningNumber);
         let hitOpposite = oppositeSectionNumbers.includes(winningNumber);
 
         if (hitHot) {
+            winLossHistory.push('W');
             oppositeUnitValue += 1;
-            hotUnitValue = Math.max(1, hotUnitValue - 1); 
-            log(`🎯 Hit Primary Hot Zone! Opposite Unit +1 (${oppositeUnitValue}), Primary Hot Unit -1 (${hotUnitValue}).`);
+            // CHANGED: On win, decrease by 2 units instead of 1
+            hotUnitValue = Math.max(1, hotUnitValue - 2); 
+            log(`🎯 Hit Primary Hot Zone! Opposite Unit +1 (${oppositeUnitValue}), Primary Hot Unit -2 (${hotUnitValue}).`);
         } 
         else if (hitOpposite) {
-            oppositeUnitValue = Math.max(1, oppositeUnitValue - 1);
+            winLossHistory.push('W');
+            // CHANGED: On win, decrease by 2 units instead of 1
+            oppositeUnitValue = Math.max(1, oppositeUnitValue - 2);
             hotUnitValue += 1; 
-            log(`🎯 Hit Opposite Hot Zone! Opposite Unit decreased to (${oppositeUnitValue}), Primary Hot Unit +1 (${hotUnitValue}).`);
+            log(`🎯 Hit Opposite Hot Zone! Opposite Unit -2 (${oppositeUnitValue}), Primary Hot Unit +1 (${hotUnitValue}).`);
         } 
         else {
+            winLossHistory.push('L');
             hotUnitValue += 1;
             oppositeUnitValue += 1;
             log(`❌ Missed both zones. Progression: Primary Unit +1 (${hotUnitValue}), Opposite Unit +1 (${oppositeUnitValue}).`);

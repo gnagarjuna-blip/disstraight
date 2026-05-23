@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roulette Wide-Symmetric Section Tracker</title>
+    <title>Roulette Deep-Symmetric Hot Tracker</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -105,7 +105,7 @@
             border-top: 5px solid #bdc3c7;
         }
         .panel.hot { border-top-color: #e74c3c; }
-        .panel.cold { border-top-color: #3498db; }
+        .panel.opposite { border-top-color: #e67e22; }
         .panel h3 { margin-top: 0; }
         .number-list {
             font-size: 15px;
@@ -136,12 +136,12 @@
 <body>
 
 <div class="container">
-    <h1>Roulette Section Tracker (9-Num Disjoint Zones)</h1>
+    <h1>Roulette Section Tracker (11-Num Deep-Symmetric)</h1>
     
     <div class="flex-section">
         <div class="input-box">
-            <h3>1. Paste Initial Numbers</h3>
-            <textarea id="initialNumbers" placeholder="Example: 32, 15, 19, 4, 21, 2, 25..."></textarea>
+            <h3>1. Paste Initial Numbers (Top is Latest / Read Bottom to Top)</h3>
+            <textarea id="initialNumbers" placeholder="Example: 10 (Latest)&#10;14&#10;31&#10;9 (Oldest)"></textarea>
             <button onclick="importNumbers()">Analyze & Initialize</button>
         </div>
         
@@ -203,19 +203,19 @@
 
     <div class="dashboard">
         <div class="panel hot">
-            <h3>🔥 Hot Section (Core + 4 Left & 4 Right)</h3>
+            <h3>🔥 Primary Hot Section (Core + 5 Left & 5 Right)</h3>
             <p>Core Hot No: <span id="hotCore" style="color:#e74c3c; font-weight:bold;">-</span></p>
-            <p>Section Layout (9 Nos Total):</p>
+            <p>Section Layout (11 Nos Total):</p>
             <div id="hotSectionContainer" class="number-list">-</div>
-            <div class="unit-display">Hot Unit: <span id="hotUnit">1</span></div>
+            <div class="unit-display">Primary Unit: <span id="hotUnit">1</span></div>
         </div>
         
-        <div class="panel cold">
-            <h3>❄️ Cold Section (Core + 4 Left & 4 Right)</h3>
-            <p>Core Cold No: <span id="coldCore" style="color:#3498db; font-weight:bold;">-</span></p>
-            <p>Section Layout (9 Nos Total):</p>
-            <div id="coldSectionContainer" class="number-list">-</div>
-            <div class="unit-display">Cold Unit: <span id="coldUnit">1</span></div>
+        <div class="panel opposite">
+            <h3>⚡ Opposite Hot Section (Opposite Core + 5 Left & 5 Right)</h3>
+            <p>Opposite Wheel No: <span id="oppositeCore" style="color:#e67e22; font-weight:bold;">-</span></p>
+            <p>Section Layout (11 Nos Total):</p>
+            <div id="oppositeSectionContainer" class="number-list">-</div>
+            <div class="unit-display">Opposite Unit: <span id="oppositeUnit">1</span></div>
         </div>
     </div>
 
@@ -231,12 +231,12 @@
     
     let history = [];
     let hotUnitValue = 1;
-    let coldUnitValue = 1;
+    let oppositeUnitValue = 1;
 
     let hotSectionNumbers = [];
-    let coldSectionNumbers = [];
+    let oppositeSectionNumbers = [];
 
-    // Fetches 4 numbers to the left and 4 numbers to the right of the core number on the wheel
+    // Fetches 5 numbers to the left and 5 numbers to the right of the core number (Total 11)
     function getSymmetricNeighborsWide(coreNumber) {
         let index = wheelOrder.indexOf(coreNumber);
         if (index === -1) return [];
@@ -244,25 +244,41 @@
         let section = [];
         let totalPositions = wheelOrder.length;
 
-        // Fetch 4 left, core number, then 4 right (total 9 numbers)
-        for (let i = -4; i <= 4; i++) {
+        // Fetch 5 left, core number, then 5 right (total 11 numbers)
+        for (let i = -5; i <= 5; i++) {
             let targetIndex = (index + i + totalPositions) % totalPositions;
             section.push(wheelOrder[targetIndex]);
         }
         return section;
     }
 
+    // Calculates the direct opposite wheel intersection position
+    function getOppositeWheelNumber(coreNumber) {
+        let index = wheelOrder.indexOf(coreNumber);
+        if (index === -1) return null;
+        
+        let totalPositions = wheelOrder.length;
+        // Halfway across the 37-slot European wheel is roughly 18 slots away
+        let oppositeIndex = (index + 18) % totalPositions;
+        return wheelOrder[oppositeIndex];
+    }
+
     function importNumbers() {
         const rawInput = document.getElementById('initialNumbers').value;
-        const parsed = rawInput.replace(/,/g, ' ').split(/\s+/).map(Number).filter(n => !isNaN(n) && n >= 0 && n <= 36);
+        // Parse into array
+        let parsed = rawInput.replace(/,/g, ' ').split(/\s+/).map(Number).filter(n => !isNaN(n) && n >= 0 && n <= 36);
         
         if(parsed.length === 0) {
             alert("Please paste valid roulette numbers (0-36).");
             return;
         }
 
+        // The user inputs numbers where top is latest and bottom is oldest. 
+        // We reverse it so history arrays build chronological order (oldest first, latest last).
+        parsed.reverse();
+
         history = parsed;
-        log(`Imported ${parsed.length} numbers successfully.`);
+        log(`Imported ${parsed.length} numbers. Read order adapted (bottom to top).`);
         analyzeHotCold();
     }
 
@@ -290,68 +306,53 @@
             sortedNumbers.push({ number: num, freq: frequencies[num] });
         });
 
-        // Sort Hot (High to Low frequency), Sort Cold (Low to High frequency)
+        // Sort Hot (High to Low frequency)
         let hotCandidates = [...sortedNumbers].sort((a, b) => b.freq - a.freq);
-        let coldCandidates = [...sortedNumbers].sort((a, b) => a.freq - b.freq);
 
         let absoluteHot = hotCandidates[0].number;
         hotSectionNumbers = getSymmetricNeighborsWide(absoluteHot);
 
-        // Find a distinct Cold target section that does NOT intersect with the chosen Hot section
-        let absoluteCold = null;
-        for (let candidate of coldCandidates) {
-            let temporaryColdSection = getSymmetricNeighborsWide(candidate.number);
-            
-            // Intersection check: Ensure no element overlaps between the two 9-number zones
-            let doesIntersect = temporaryColdSection.some(num => hotSectionNumbers.includes(num));
-            
-            if (!doesIntersect) {
-                absoluteCold = candidate.number;
-                coldSectionNumbers = temporaryColdSection;
-                break;
-            }
-        }
-
-        // Emergency fallback if fields are completely saturated
-        if (absoluteCold === null) {
-            absoluteCold = coldCandidates[0].number;
-            coldSectionNumbers = getSymmetricNeighborsWide(absoluteCold);
-        }
+        // Derive the exact opposite intersecting wheel sector target
+        let absoluteOpposite = getOppositeWheelNumber(absoluteHot);
+        oppositeSectionNumbers = getSymmetricNeighborsWide(absoluteOpposite);
 
         // Update DOM Elements
-        document.getElementById('recentHistory').innerText = lookupWindow.join(', ');
+        // Display in standard readable layout showing most recent entries first
+        let displayWindow = [...lookupWindow].reverse();
+        document.getElementById('recentHistory').innerText = displayWindow.join(', ');
         document.getElementById('totalCount').innerText = history.length;
         
         document.getElementById('hotCore').innerText = absoluteHot;
         document.getElementById('hotSectionContainer').innerText = hotSectionNumbers.join(', ');
         
-        document.getElementById('coldCore').innerText = absoluteCold;
-        document.getElementById('coldSectionContainer').innerText = coldSectionNumbers.join(', ');
+        document.getElementById('oppositeCore').innerText = absoluteOpposite;
+        document.getElementById('oppositeSectionContainer').innerText = oppositeSectionNumbers.join(', ');
     }
 
     function evaluateProgressionRules(winningNumber) {
-        if(hotSectionNumbers.length === 0 || coldSectionNumbers.length === 0) return;
+        if(hotSectionNumbers.length === 0 || oppositeSectionNumbers.length === 0) return;
 
         let hitHot = hotSectionNumbers.includes(winningNumber);
-        let hitCold = coldSectionNumbers.includes(winningNumber);
+        let hitOpposite = oppositeSectionNumbers.includes(winningNumber);
 
         if (hitHot) {
-            coldUnitValue += 1;
+            oppositeUnitValue += 1;
             hotUnitValue = Math.max(1, hotUnitValue - 1); 
-            log(`🎯 Hit Hot Section! Cold Unit +1 (${coldUnitValue}), Hot Unit -1 (${hotUnitValue}).`);
+            log(`🎯 Hit Primary Hot Zone! Opposite Unit +1 (${oppositeUnitValue}), Primary Hot Unit -1 (${hotUnitValue}).`);
         } 
-        else if (hitCold) {
-            coldUnitValue = Math.max(1, coldUnitValue - 1);
-            log(`🎯 Hit Cold Section! Cold Unit decreased to (${coldUnitValue}).`);
+        else if (hitOpposite) {
+            oppositeUnitValue = Math.max(1, oppositeUnitValue - 1);
+            hotUnitValue += 1; // Assuming alternative progression balances conversely
+            log(`🎯 Hit Opposite Hot Zone! Opposite Unit decreased to (${oppositeUnitValue}), Primary Hot Unit +1 (${hotUnitValue}).`);
         } 
         else {
             hotUnitValue += 1;
-            coldUnitValue += 1;
-            log(`❌ Missed both zones. Progression: Hot Unit +1 (${hotUnitValue}), Cold Unit +1 (${coldUnitValue}).`);
+            oppositeUnitValue += 1;
+            log(`❌ Missed both zones. Progression: Primary Unit +1 (${hotUnitValue}), Opposite Unit +1 (${oppositeUnitValue}).`);
         }
 
         document.getElementById('hotUnit').innerText = hotUnitValue;
-        document.getElementById('coldUnit').innerText = coldUnitValue;
+        document.getElementById('oppositeUnit').innerText = oppositeUnitValue;
     }
 
     function log(message) {
